@@ -1,5 +1,10 @@
 .claude/
-docs/
+docs/spec/
+docs/research/
 node_modules/
 .venv/
 dist/
+backend/uv.lock
+frontend/package-lock.json
+backend/openapi.json
+frontend/src/services/api-types.ts
