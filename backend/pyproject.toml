@@ -1,0 +1,51 @@
+[project]
+name = "eld-trip-planner-backend"
+version = "0.1.0"
+description = "ELD Trip Planner API (Django + DRF, stateless)"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "django==5.2.17",
+    "django-cors-headers==4.9.0",
+    "django-environ==0.14.0",
+    "djangorestframework==3.18.1",
+    "drf-spectacular==0.30.0",
+    "drf-spectacular-sidecar==2026.9.1",
+    "gunicorn==26.2.0",
+    "httpx==0.28.1",
+    "tenacity==9.1.4",
+    "timezonefinder==9.0.0",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "hypothesis==6.168.3",
+    "pytest==9.1.1",
+    "pytest-django==4.14.0",
+    "respx==0.23.1",
+    "ruff==0.16.9",
+    "tzdata==2026.4",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+extend-exclude = [".venv", "openapi.json"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "DJ", "RET", "PT"]
+ignore = ["PT018"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S603", "S607"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

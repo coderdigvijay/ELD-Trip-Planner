@@ -1,0 +1,27 @@
+# Claude / local-only
+graphify-out/
+docs/
+BUG_LEDGER.md
+.claude/settings.local.json
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+staticfiles/
+
+# Node
+node_modules/
+dist/
+.vite/
+playwright-report/
+test-results/
+
+.DS_Store

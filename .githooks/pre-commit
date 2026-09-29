@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Commit gate: refresh the code graph (the only in-session update point) + lint staged files.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
+
+if command -v graphify >/dev/null; then
+  echo "pre-commit: graphify update ."
+  graphify update . >/dev/null 2>&1 || echo "pre-commit: graphify update failed (non-blocking)"
+fi
+
+py=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^backend/.*\.py$' || true)
+if [ -n "$py" ] && [ -x backend/.venv/bin/ruff ]; then
+  echo "$py" | xargs backend/.venv/bin/ruff check
+fi
+
+ts=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^frontend/.*\.(ts|tsx)$' | sed 's#^frontend/##' || true)
+if [ -n "$ts" ] && [ -x frontend/node_modules/.bin/eslint ]; then
+  (cd frontend && echo "$ts" | xargs ./node_modules/.bin/eslint --max-warnings=0 --no-warn-ignored)
+fi

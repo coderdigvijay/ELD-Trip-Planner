@@ -1,0 +1,152 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "ELD Trip Planner API",
+        "version": "1.0.0",
+        "description": "Plans a truck trip and its FMCSA daily log sheets."
+    },
+    "paths": {
+        "/api/v1/health": {
+            "get": {
+                "operationId": "getHealth",
+                "description": "Liveness and keep-warm. Never calls ORS, never throttled.",
+                "summary": "Liveness check",
+                "tags": [
+                    "health"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unexpected error"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ApiVersionEnum": {
+                "enum": [
+                    "1"
+                ],
+                "type": "string",
+                "description": "* `1` - 1"
+            },
+            "ErrorBody": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/ErrorCode"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "field": {
+                        "type": "string"
+                    },
+                    "details": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FieldError"
+                        }
+                    },
+                    "retry_after_s": {
+                        "type": "integer",
+                        "maximum": 300,
+                        "minimum": 1
+                    },
+                    "request_id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                ]
+            },
+            "ErrorCode": {
+                "enum": [
+                    "VALIDATION_ERROR",
+                    "LOCATION_NOT_FOUND",
+                    "UNSUPPORTED_LOCATION",
+                    "AMBIGUOUS_LOCATION",
+                    "ROUTE_NOT_FOUND",
+                    "TRIP_TOO_LONG",
+                    "NOT_FOUND",
+                    "METHOD_NOT_ALLOWED",
+                    "RATE_LIMITED",
+                    "UPSTREAM_QUOTA_EXCEEDED",
+                    "UPSTREAM_UNAVAILABLE",
+                    "INTERNAL"
+                ],
+                "type": "string",
+                "description": "* `VALIDATION_ERROR` - VALIDATION_ERROR\n* `LOCATION_NOT_FOUND` - LOCATION_NOT_FOUND\n* `UNSUPPORTED_LOCATION` - UNSUPPORTED_LOCATION\n* `AMBIGUOUS_LOCATION` - AMBIGUOUS_LOCATION\n* `ROUTE_NOT_FOUND` - ROUTE_NOT_FOUND\n* `TRIP_TOO_LONG` - TRIP_TOO_LONG\n* `NOT_FOUND` - NOT_FOUND\n* `METHOD_NOT_ALLOWED` - METHOD_NOT_ALLOWED\n* `RATE_LIMITED` - RATE_LIMITED\n* `UPSTREAM_QUOTA_EXCEEDED` - UPSTREAM_QUOTA_EXCEEDED\n* `UPSTREAM_UNAVAILABLE` - UPSTREAM_UNAVAILABLE\n* `INTERNAL` - INTERNAL"
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/ErrorBody"
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "FieldError": {
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "field",
+                    "message"
+                ]
+            },
+            "HealthResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/StatusEnum"
+                    },
+                    "api_version": {
+                        "$ref": "#/components/schemas/ApiVersionEnum"
+                    }
+                },
+                "required": [
+                    "api_version",
+                    "status"
+                ]
+            },
+            "StatusEnum": {
+                "enum": [
+                    "ok"
+                ],
+                "type": "string",
+                "description": "* `ok` - ok"
+            }
+        }
+    }
+}

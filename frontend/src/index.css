@@ -1,0 +1,189 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme static {
+  /* Remove Tailwind defaults so only our tokens exist.
+     bg-transparent, bg-current, bg-inherit, rounded-none and rounded-full still work (static utilities). */
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --text-*: initial;
+  --font-weight-*: initial;
+  --breakpoint-*: initial;
+
+  /* ---------- Color: surfaces ---------- */
+  --color-paper: #f7f6f2; /* app background, warm off-white */
+  --color-surface: #ffffff; /* panels, inputs, popovers, the log sheet, marker halos and route casing */
+  --color-surface-sunk: #efeee9; /* table header, skeleton fill, row hover */
+
+  /* ---------- Color: ink (text and printed form) ---------- */
+  --color-ink: #15171a; /* primary text, headings, primary button bg, log form lines */
+  --color-ink-2: #4a4f57; /* secondary text, field hints, legend labels */
+  --color-ink-3: #62676f; /* tertiary text, captions, units; the lightest color allowed for text */
+
+  /* ---------- Color: rules (lines) ---------- */
+  --color-rule: #c8cbd0; /* hairline dividers, panel borders (decorative, not a UI boundary) */
+  --color-rule-strong: #7d828b; /* input and button borders, control boundaries (>= 3:1) */
+
+  /* ---------- Color: the one accent ---------- */
+  --color-pen: #1c3f94; /* computed data + focus ring. Never decoration. */
+  --color-pen-tint: #e6ebf6; /* selected row, active day tab, highlighted autocomplete option */
+
+  /* ---------- Color: alert semantics (always with text + icon) ---------- */
+  --color-danger: #b42318;
+  --color-danger-tint: #fbedeb;
+  --color-warn: #a15c07;
+  --color-warn-tint: #fcf3e6;
+  --color-ok: #1f6f43;
+  --color-ok-tint: #eaf3ee;
+
+  /* ---------- Color: stop markers (always with shape + glyph) ---------- */
+  --color-stop-load: #15171a; /* start, pickup, dropoff */
+  --color-stop-fuel: #b45309; /* fuel */
+  --color-stop-rest: #1f6f43; /* 30-min break, 10-hr rest, 34-hr restart */
+
+  /* ---------- Typography ---------- */
+  --font-sans: "Public Sans Variable", "Public Sans Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    "IBM Plex Mono", "IBM Plex Mono Fallback", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600; /* nothing heavier exists as a class (anti-slop 12) */
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem; /* 12/16 labels, legend, badges */
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.125rem; /* 13/18 captions, hints, table cells */
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.25rem; /* 14/20 body (default) */
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem; /* 16/24 body-lg, inputs on phones */
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem; /* 20/28 panel headings (h2), summary figures */
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem; /* 24/32 reserved (rare) */
+
+  /* ---------- Radius (small and restrained). 2xl to 4xl are aliases so no shadcn class exceeds 4px ---------- */
+  --radius-xs: 2px;
+  --radius-sm: 2px; /* buttons, inputs, badges, tabs */
+  --radius-md: 4px; /* panels, popovers, dialog, alerts */
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius-4xl: 4px;
+
+  /* ---------- Elevation: hairlines first, one shadow for floating layers only ---------- */
+  --shadow-xs: 0 0 #0000; /* shadcn uses shadow-xs on inputs/buttons: neutralized */
+  --shadow-sm: 0 0 #0000; /* shadcn cards: neutralized */
+  --shadow-md:
+    0 1px 2px rgb(21 23 26 / 0.08), 0 4px 12px rgb(21 23 26 / 0.08); /* popover, autocomplete list, tooltip */
+  --shadow-lg: 0 1px 2px rgb(21 23 26 / 0.1), 0 8px 24px rgb(21 23 26 / 0.12); /* dialog only */
+
+  /* ---------- Breakpoints (mobile first; base = 360). sm is kept because copied shadcn
+     components use sm: variants; our own layout uses md, lg and xl only. ---------- */
+  --breakpoint-sm: 40rem; /* 640 */
+  --breakpoint-md: 48rem; /* 768 */
+  --breakpoint-lg: 64rem; /* 1024 */
+  --breakpoint-xl: 90rem; /* 1440 */
+
+  /* ---------- Motion. Tailwind v4 has an --ease-* namespace but no duration namespace:
+     durations are the default below plus bare-value classes duration-120 / duration-160 / duration-240. ---------- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* class ease-standard: enter, reveal */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* class ease-exit: leave */
+  --default-transition-duration: 120ms; /* every transition-* class without duration-* */
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* shadcn variable names, pointing at our tokens. Components and the CLI read these. */
+:root {
+  --radius: 0.25rem;
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-ink); /* primary buttons are ink, not pen */
+  --primary-foreground: var(--color-surface);
+  --secondary: var(--color-surface);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-surface-sunk);
+  --muted-foreground: var(--color-ink-3);
+  --accent: var(--color-pen-tint); /* shadcn "accent" = highlighted option, not our pen */
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-surface);
+  --border: var(--color-rule);
+  --input: var(--color-rule-strong);
+  --ring: var(--color-pen);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-pen);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-pen-tint);
+    color: var(--color-ink);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility label-caps {
+  /* section labels: TRIP, STOPS, DAILY LOGS */
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+@utility num {
+  font-variant-numeric: tabular-nums lining-nums;
+}

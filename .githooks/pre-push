@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Push gate: full tests, typecheck, build, type drift, long-dash and secret greps.
+# Skips a side that is not scaffolded yet.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
+
+if [ -x backend/.venv/bin/pytest ]; then
+  (cd backend && HYPOTHESIS_PROFILE=ci .venv/bin/pytest -q --tb=short)
+fi
+if [ -f frontend/package.json ] && [ -d frontend/node_modules ]; then
+  (cd frontend && npx tsc --noEmit && npx vitest run && npx vite build >/dev/null && node scripts/check-bundle.mjs)
+fi
+
+# OpenAPI type drift: regenerate the schema and the types, fail on any difference.
+if [ -x backend/.venv/bin/python ] && [ -d frontend/node_modules ]; then
+  tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+  (cd backend && DJANGO_DEBUG=true .venv/bin/python manage.py spectacular --format openapi-json --file "$tmp/openapi.json" >/dev/null)
+  cmp -s "$tmp/openapi.json" backend/openapi.json || { echo "pre-push: backend/openapi.json is stale (run make schema)"; exit 1; }
+  (cd frontend && npx openapi-typescript "$tmp/openapi.json" -o "$tmp/api-types.ts" >/dev/null)
+  cmp -s "$tmp/api-types.ts" frontend/src/services/api-types.ts || { echo "pre-push: api-types.ts is stale (run npm run gen:types)"; exit 1; }
+fi
+
+# No em or en dashes in tracked text files.
+if git ls-files -z -- ':!*.lock' ':!*package-lock.json' ':!*.png' ':!*.ico' ':!*.woff2' \
+  | xargs -0 grep -lI -P '\x{2013}|\x{2014}' 2>/dev/null | grep .; then
+  echo "pre-push: long dashes found in the files above"; exit 1
+fi
+
+# No ORS key material in tracked files (the key is a long token; .env files are untracked).
+if git ls-files -z | xargs -0 grep -lI -E '(^|[^A-Za-z0-9])(5b3ce3597851110001cf6248[0-9a-f]{20,}|ORS_API_KEY[[:space:]]*=[[:space:]]*[A-Za-z0-9]{20,})' 2>/dev/null | grep .; then
+  echo "pre-push: possible ORS key in the files above"; exit 1
+fi
+echo "pre-push: all gates passed"
