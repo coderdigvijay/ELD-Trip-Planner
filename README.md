@@ -18,9 +18,9 @@ Deployment is pending. These placeholders will be replaced when the URLs exist.
 | What | URL |
 |---|---|
 | App (Vercel) | `<vercel-url>` |
-| API (Render) | `<render-url>` |
-| API health check | `<render-url>/api/v1/health` |
-| API docs (Swagger) | `<render-url>/api/v1/docs` |
+| API (Render) | https://eld-trip-planner-api-i6y3.onrender.com |
+| API health check | https://eld-trip-planner-api-i6y3.onrender.com/api/v1/health |
+| API docs (Swagger) | https://eld-trip-planner-api-i6y3.onrender.com/api/v1/docs |
 | Loom walkthrough | `<loom-url>` |
 
 The API runs on Render's free tier and sleeps when idle. The first request after a sleep can take
