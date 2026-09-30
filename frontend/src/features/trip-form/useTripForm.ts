@@ -9,12 +9,21 @@ import {
   defaultTripValues,
   DEFAULT_START_TIME,
   EXAMPLE_TRIP,
+  defaultLogHeader,
   tripFormSchema,
   type TripFieldName,
   type TripFormValues,
 } from "./schema";
 
 const OPTIONAL_FIELDS = /^(start_date|start_time|log_header\.)/;
+
+/** The section opens on load only when the values differ from the pre-filled sample. */
+function hasCustomLogHeader(header: TripFormValues["log_header"]): boolean {
+  const sample = defaultLogHeader();
+  return (Object.keys(sample) as (keyof typeof sample)[]).some(
+    (key) => header[key] !== sample[key],
+  );
+}
 
 function initialValues(): TripFormValues {
   return decodeShare(window.location.search) ?? defaultTripValues();
@@ -31,7 +40,7 @@ export function useTripForm() {
   const [detailsOpen, setDetailsOpen] = useState(
     Boolean(initial.start_date) ||
       initial.start_time !== DEFAULT_START_TIME ||
-      Object.values(initial.log_header).some(Boolean),
+      hasCustomLogHeader(initial.log_header),
   );
   const { setFocus, setError, setValue, clearErrors } = form;
 

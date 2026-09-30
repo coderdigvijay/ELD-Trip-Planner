@@ -182,7 +182,7 @@ export function Workspace({ onResultsChange }: WorkspaceProps) {
         <div className="grid items-start gap-6 lg:grid-cols-[344px_1fr] xl:grid-cols-[360px_1fr]">
           <section
             aria-labelledby="trip-heading"
-            className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5 lg:sticky lg:top-6"
+            className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
           >
             <h2 id="trip-heading" className="label-caps">
               Trip
