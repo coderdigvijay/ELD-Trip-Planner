@@ -152,7 +152,7 @@ make run                              # http://localhost:8000
 
 ```bash
 cd frontend
-cp .env.example .env
+cp .env.example .env.local
 npm install
 npm run dev                           # http://localhost:5173
 ```
@@ -197,7 +197,7 @@ npm run test:e2e        # Playwright, opens a headed browser window
 | Routing adapter (respx) | Every ORS failure (401, 403, 429, 5xx, timeout, malformed body) maps to one typed error. Retries, deadline, caching and key hygiene |
 | API contract | Responses validated against the OpenAPI schema, error model, throttles, CORS, input validation |
 | Frontend (Vitest) | Log sheet geometry, form validation, error mapping, loading, empty and error states |
-| Playwright | Config and CI job are in place. The `frontend/e2e/` folder is currently empty, so the browser flows were verified manually (screenshots above) and there are no committed E2E specs yet |
+| Playwright | 14 committed headed specs with the API mocked: first visit and plan, multi-day trip (24 h totals), typed error handling, keyboard-only path, print (one PDF page per sheet), accessibility checks, and no API key in requests or bundle |
 
 CI (`.github/workflows/ci.yml`) runs lint, tests, OpenAPI drift and API type drift checks, and a
 frontend build with a bundle-size check.
@@ -243,7 +243,7 @@ eld-trip-planner/
   frontend/
     src/features/             trip-form, map, results, logs (SVG log sheets)
     src/services/             typed API client (generated types)
-    e2e/                      Playwright specs (none committed yet)
+    e2e/                      Playwright specs, fixtures and helpers
     vercel.json  package.json  vite.config.ts
 ```
 
