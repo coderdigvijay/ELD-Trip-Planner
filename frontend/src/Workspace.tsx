@@ -178,105 +178,107 @@ export function Workspace({ onResultsChange }: WorkspaceProps) {
           Skip to results
         </a>
       )}
-      <div className="grid gap-6 lg:grid-cols-[344px_1fr] xl:grid-cols-[360px_1fr]">
-        <section
-          aria-labelledby="trip-heading"
-          className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5 lg:sticky lg:top-6"
-        >
-          <h2 id="trip-heading" className="label-caps">
-            Trip
-          </h2>
-          {collapsed ? (
-            <div className="mt-3 flex flex-col items-start gap-3 md:hidden">
-              <p className="text-lg text-foreground">{tripLine}</p>
-              <p className="font-mono text-base text-ink-2 num">
-                {lastClick?.current_cycle_used_hours ?? 0} h used
-              </p>
-              <p role="status" className="text-base text-ink-2">
-                {planner.isPending ? "Planning route..." : ""}
-              </p>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  editTrip();
-                }}
-              >
-                Edit trip
-              </Button>
-            </div>
-          ) : null}
-          <div className={collapsed ? "mt-4 max-md:hidden" : "mt-4"}>
-            <TripForm
-              api={api}
-              pending={planner.isPending}
-              onSubmit={handleSubmit}
-              submitRef={submitRef}
-              onFocusWithin={() => {
-                prefetchResults();
-              }}
-            />
-          </div>
-        </section>
-
-        <section
-          ref={resultsRef}
-          id="results"
-          tabIndex={-1}
-          aria-label="Results"
-          className="print-hidden flex min-w-0 flex-col gap-6 outline-none"
-        >
-          <p role="status" className="sr-only">
-            {announcement}
-          </p>
-          {alert && !planner.isPending ? (
-            <PlanAlert
-              failure={alert}
-              failedAtS={planner.failedAtS}
-              showingPrevious={planner.lastPlan !== null}
-              onRetry={() => {
-                if (pendingValues.current) planner.submit(toPlanRequest(pendingValues.current));
-              }}
-              onEdit={editTrip}
-            />
-          ) : null}
-          {showEmpty ? (
-            <EmptyGuidance
-              onFillExample={() => {
-                fillExample();
-                submitRef.current?.focus();
-              }}
-            />
-          ) : null}
-          {!showEmpty ? (
-            <Suspense fallback={<ResultsFallback />}>
-              <ResultsMain
-                plan={plan}
-                loading={planner.isPending}
-                summarySlot={
-                  waking ? (
-                    <WakingSummary
-                      startedAtS={planner.submittedAtS ?? 0}
-                      onCancel={() => {
-                        planner.cancel();
-                        setCollapsed(false);
-                      }}
-                    />
-                  ) : undefined
-                }
-                stale={stale}
-                selectedStopId={selectedStopId}
-                onSelectStop={setSelectedStopId}
-                onLogFocus={(focus) => {
-                  setLogFocus((previous) => ({ ...focus, nonce: (previous?.nonce ?? 0) + 1 }));
+      <div className="flex flex-col gap-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[344px_1fr] xl:grid-cols-[360px_1fr]">
+          <section
+            aria-labelledby="trip-heading"
+            className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5 lg:sticky lg:top-6"
+          >
+            <h2 id="trip-heading" className="label-caps">
+              Trip
+            </h2>
+            {collapsed ? (
+              <div className="mt-3 flex flex-col items-start gap-3 md:hidden">
+                <p className="text-lg text-foreground">{tripLine}</p>
+                <p className="font-mono text-base text-ink-2 num">
+                  {lastClick?.current_cycle_used_hours ?? 0} h used
+                </p>
+                <p role="status" className="text-base text-ink-2">
+                  {planner.isPending ? "Planning route..." : ""}
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    editTrip();
+                  }}
+                >
+                  Edit trip
+                </Button>
+              </div>
+            ) : null}
+            <div className={collapsed ? "mt-4 max-md:hidden" : "mt-4"}>
+              <TripForm
+                api={api}
+                pending={planner.isPending}
+                onSubmit={handleSubmit}
+                submitRef={submitRef}
+                onFocusWithin={() => {
+                  prefetchResults();
                 }}
               />
-            </Suspense>
-          ) : null}
-        </section>
+            </div>
+          </section>
+
+          <section
+            ref={resultsRef}
+            id="results"
+            tabIndex={-1}
+            aria-label="Results"
+            className="print-hidden flex min-w-0 flex-col gap-6 outline-none"
+          >
+            <p role="status" className="sr-only">
+              {announcement}
+            </p>
+            {alert && !planner.isPending ? (
+              <PlanAlert
+                failure={alert}
+                failedAtS={planner.failedAtS}
+                showingPrevious={planner.lastPlan !== null}
+                onRetry={() => {
+                  if (pendingValues.current) planner.submit(toPlanRequest(pendingValues.current));
+                }}
+                onEdit={editTrip}
+              />
+            ) : null}
+            {showEmpty ? (
+              <EmptyGuidance
+                onFillExample={() => {
+                  fillExample();
+                  submitRef.current?.focus();
+                }}
+              />
+            ) : null}
+            {!showEmpty ? (
+              <Suspense fallback={<ResultsFallback />}>
+                <ResultsMain
+                  plan={plan}
+                  loading={planner.isPending}
+                  summarySlot={
+                    waking ? (
+                      <WakingSummary
+                        startedAtS={planner.submittedAtS ?? 0}
+                        onCancel={() => {
+                          planner.cancel();
+                          setCollapsed(false);
+                        }}
+                      />
+                    ) : undefined
+                  }
+                  stale={stale}
+                  selectedStopId={selectedStopId}
+                  onSelectStop={setSelectedStopId}
+                  onLogFocus={(focus) => {
+                    setLogFocus((previous) => ({ ...focus, nonce: (previous?.nonce ?? 0) + 1 }));
+                  }}
+                />
+              </Suspense>
+            ) : null}
+          </section>
+        </div>
 
         <div
           className={cn(
-            "min-w-0 lg:col-span-2",
+            "min-w-0",
             plan && "animate-reveal [animation-delay:80ms] motion-reduce:animate-none",
           )}
         >
