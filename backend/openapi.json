@@ -37,16 +37,271 @@
                     }
                 }
             }
+        },
+        "/api/v1/places/autocomplete": {
+            "get": {
+                "operationId": "autocompletePlaces",
+                "description": "GET /api/v1/places/autocomplete?q=.",
+                "summary": "US place suggestions",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 100
+                        },
+                        "description": "3 to 100 characters after trimming. No control characters.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "places"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AutocompleteResponse"
+                                }
+                            }
+                        },
+                        "description": "At most 5 suggestions. Cache-Control: public, max-age=3600."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: q is missing, too short, too long or has control characters."
+                    },
+                    "429": {
+                        "headers": {
+                            "Retry-After": {
+                                "schema": {
+                                    "type": "integer"
+                                },
+                                "description": "Seconds to wait, 1 to 300. Same value as error.retry_after_s."
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Rate limited. Read retry_after_s or the Retry-After header."
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unexpected error. Quote request_id."
+                    },
+                    "503": {
+                        "headers": {
+                            "Retry-After": {
+                                "schema": {
+                                    "type": "integer"
+                                },
+                                "description": "Seconds to wait, 1 to 300. Same value as error.retry_after_s."
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Routing service unavailable or out of quota (UPSTREAM_UNAVAILABLE, UPSTREAM_QUOTA_EXCEEDED)."
+                    }
+                }
+            }
+        },
+        "/api/v1/trips/plan": {
+            "post": {
+                "operationId": "planTrip",
+                "description": "POST /api/v1/trips/plan.",
+                "summary": "Plan a trip with stops and daily log sheets",
+                "tags": [
+                    "trips"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlanTripRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlanTripResponse"
+                                }
+                            }
+                        },
+                        "description": "The plan. Cache-Control: no-store."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: the request must change. See field and details."
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "LOCATION_NOT_FOUND, UNSUPPORTED_LOCATION, ROUTE_NOT_FOUND or TRIP_TOO_LONG: the trip cannot be planned as entered."
+                    },
+                    "429": {
+                        "headers": {
+                            "Retry-After": {
+                                "schema": {
+                                    "type": "integer"
+                                },
+                                "description": "Seconds to wait, 1 to 300. Same value as error.retry_after_s."
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Rate limited. Read retry_after_s or the Retry-After header."
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unexpected error. Quote request_id."
+                    },
+                    "503": {
+                        "headers": {
+                            "Retry-After": {
+                                "schema": {
+                                    "type": "integer"
+                                },
+                                "description": "Seconds to wait, 1 to 300. Same value as error.retry_after_s."
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Routing service unavailable or out of quota (UPSTREAM_UNAVAILABLE, UPSTREAM_QUOTA_EXCEEDED)."
+                    }
+                }
+            }
         }
     },
     "components": {
         "schemas": {
-            "ApiVersionEnum": {
+            "ApiVersion": {
                 "enum": [
                     "1"
                 ],
                 "type": "string",
                 "description": "* `1` - 1"
+            },
+            "Assumption": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "text"
+                ]
+            },
+            "AutocompleteResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlaceSuggestion"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "Bounds": {
+                "type": "object",
+                "properties": {
+                    "south": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "west": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "north": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "east": {
+                        "type": "number",
+                        "format": "double"
+                    }
+                },
+                "required": [
+                    "east",
+                    "north",
+                    "south",
+                    "west"
+                ]
+            },
+            "DutyStatus": {
+                "enum": [
+                    "off",
+                    "sleeper",
+                    "driving",
+                    "on_duty"
+                ],
+                "type": "string",
+                "description": "* `off` - Off\n* `sleeper` - Sleeper\n* `driving` - Driving\n* `on_duty` - On Duty"
             },
             "ErrorBody": {
                 "type": "object",
@@ -129,10 +384,10 @@
                 "type": "object",
                 "properties": {
                     "status": {
-                        "$ref": "#/components/schemas/StatusEnum"
+                        "$ref": "#/components/schemas/HealthResponseStatus"
                     },
                     "api_version": {
-                        "$ref": "#/components/schemas/ApiVersionEnum"
+                        "$ref": "#/components/schemas/ApiVersion"
                     }
                 },
                 "required": [
@@ -140,12 +395,852 @@
                     "status"
                 ]
             },
-            "StatusEnum": {
+            "HealthResponseStatus": {
                 "enum": [
                     "ok"
                 ],
                 "type": "string",
                 "description": "* `ok` - ok"
+            },
+            "LabelSource": {
+                "enum": [
+                    "input",
+                    "geocoded",
+                    "nearby",
+                    "coordinates"
+                ],
+                "type": "string",
+                "description": "* `input` - Input\n* `geocoded` - Geocoded\n* `nearby` - Nearby\n* `coordinates` - Coordinates"
+            },
+            "LogDay": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD in the frozen trip offset."
+                    },
+                    "sheet_index": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "from_label": {
+                        "type": "string"
+                    },
+                    "to_label": {
+                        "type": "string"
+                    },
+                    "miles_driven": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "segments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LogSegment"
+                        }
+                    },
+                    "remarks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LogRemark"
+                        }
+                    },
+                    "totals": {
+                        "$ref": "#/components/schemas/LogTotals"
+                    },
+                    "recap": {
+                        "$ref": "#/components/schemas/LogRecap"
+                    }
+                },
+                "required": [
+                    "date",
+                    "from_label",
+                    "miles_driven",
+                    "recap",
+                    "remarks",
+                    "segments",
+                    "sheet_index",
+                    "to_label",
+                    "totals"
+                ]
+            },
+            "LogHeader": {
+                "type": "object",
+                "properties": {
+                    "driver_name": {
+                        "type": "string"
+                    },
+                    "carrier_name": {
+                        "type": "string"
+                    },
+                    "main_office_address": {
+                        "type": "string"
+                    },
+                    "home_terminal_address": {
+                        "type": "string"
+                    },
+                    "truck_number": {
+                        "type": "string"
+                    },
+                    "trailer_number": {
+                        "type": "string"
+                    },
+                    "shipping_doc": {
+                        "type": "string"
+                    },
+                    "shipper_commodity": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "carrier_name",
+                    "driver_name",
+                    "home_terminal_address",
+                    "main_office_address",
+                    "shipper_commodity",
+                    "shipping_doc",
+                    "trailer_number",
+                    "truck_number"
+                ]
+            },
+            "LogHeaderRequest": {
+                "type": "object",
+                "description": "Header text only; never affects HOS. Missing, null or blank all mean \"use the default\".",
+                "properties": {
+                    "driver_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 80
+                    },
+                    "carrier_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 100
+                    },
+                    "main_office_address": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "home_terminal_address": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 150
+                    },
+                    "truck_number": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 40
+                    },
+                    "trailer_number": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 40
+                    },
+                    "shipping_doc": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 60
+                    },
+                    "shipper_commodity": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 100
+                    }
+                }
+            },
+            "LogRecap": {
+                "type": "object",
+                "properties": {
+                    "on_duty_today": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "a_last7": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "b_available_tomorrow": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "c_last8": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "restart_note": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "a_last7",
+                    "b_available_tomorrow",
+                    "c_last8",
+                    "on_duty_today",
+                    "restart_note"
+                ]
+            },
+            "LogRemark": {
+                "type": "object",
+                "properties": {
+                    "minute": {
+                        "type": "integer",
+                        "maximum": 1439,
+                        "minimum": 0
+                    },
+                    "location_label": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "location_label",
+                    "minute",
+                    "note"
+                ]
+            },
+            "LogSegment": {
+                "type": "object",
+                "properties": {
+                    "start_min": {
+                        "type": "integer",
+                        "maximum": 1440,
+                        "minimum": 0
+                    },
+                    "end_min": {
+                        "type": "integer",
+                        "maximum": 1440,
+                        "minimum": 0
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/DutyStatus"
+                    },
+                    "location_label": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "stationary": {
+                        "type": "boolean"
+                    },
+                    "stop_id": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "end_min",
+                    "location_label",
+                    "note",
+                    "start_min",
+                    "stationary",
+                    "status",
+                    "stop_id"
+                ]
+            },
+            "LogTotals": {
+                "type": "object",
+                "properties": {
+                    "off": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "sleeper": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "driving": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "on_duty": {
+                        "type": "number",
+                        "format": "double"
+                    }
+                },
+                "required": [
+                    "driving",
+                    "off",
+                    "on_duty",
+                    "sleeper"
+                ]
+            },
+            "PlaceSuggestion": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "lat": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "lng": {
+                        "type": "number",
+                        "format": "double"
+                    }
+                },
+                "required": [
+                    "label",
+                    "lat",
+                    "lng"
+                ]
+            },
+            "PlanTripRequest": {
+                "type": "object",
+                "properties": {
+                    "current_location": {
+                        "$ref": "#/components/schemas/LocationInput"
+                    },
+                    "pickup_location": {
+                        "$ref": "#/components/schemas/LocationInput"
+                    },
+                    "dropoff_location": {
+                        "$ref": "#/components/schemas/LocationInput"
+                    },
+                    "current_cycle_used_hours": {
+                        "type": "number",
+                        "format": "double",
+                        "maximum": 70,
+                        "minimum": 0
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "pattern": "^([01][0-9]|2[0-3]):(00|15|30|45)$"
+                    },
+                    "log_header": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/LogHeaderRequest"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "current_cycle_used_hours",
+                    "current_location",
+                    "dropoff_location",
+                    "pickup_location"
+                ]
+            },
+            "PlanTripResponse": {
+                "type": "object",
+                "properties": {
+                    "trip": {
+                        "$ref": "#/components/schemas/TripMeta"
+                    },
+                    "route": {
+                        "$ref": "#/components/schemas/Route"
+                    },
+                    "stops": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Stop"
+                        }
+                    },
+                    "timeline": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TimelineEvent"
+                        }
+                    },
+                    "days": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LogDay"
+                        }
+                    },
+                    "summary": {
+                        "$ref": "#/components/schemas/TripSummary"
+                    }
+                },
+                "required": [
+                    "days",
+                    "route",
+                    "stops",
+                    "summary",
+                    "timeline",
+                    "trip"
+                ]
+            },
+            "ResolvedPlace": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "lat": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "lng": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/LabelSource"
+                    }
+                },
+                "required": [
+                    "label",
+                    "lat",
+                    "lng",
+                    "source"
+                ]
+            },
+            "ResolvedPlaces": {
+                "type": "object",
+                "properties": {
+                    "current": {
+                        "$ref": "#/components/schemas/ResolvedPlace"
+                    },
+                    "pickup": {
+                        "$ref": "#/components/schemas/ResolvedPlace"
+                    },
+                    "dropoff": {
+                        "$ref": "#/components/schemas/ResolvedPlace"
+                    }
+                },
+                "required": [
+                    "current",
+                    "dropoff",
+                    "pickup"
+                ]
+            },
+            "Route": {
+                "type": "object",
+                "properties": {
+                    "profile": {
+                        "$ref": "#/components/schemas/RouteProfile"
+                    },
+                    "distance_mi": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "planned_driving_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "bounds": {
+                        "$ref": "#/components/schemas/Bounds"
+                    },
+                    "legs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RouteLeg"
+                        }
+                    }
+                },
+                "required": [
+                    "bounds",
+                    "distance_mi",
+                    "legs",
+                    "planned_driving_h",
+                    "profile"
+                ]
+            },
+            "RouteLeg": {
+                "type": "object",
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "maximum": 1,
+                        "minimum": 0
+                    },
+                    "from_label": {
+                        "type": "string"
+                    },
+                    "to_label": {
+                        "type": "string"
+                    },
+                    "distance_mi": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "duration_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "planned_driving_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "polyline": {
+                        "type": "string",
+                        "description": "Encoded polyline, precision 5."
+                    },
+                    "bounds": {
+                        "$ref": "#/components/schemas/Bounds"
+                    }
+                },
+                "required": [
+                    "bounds",
+                    "distance_mi",
+                    "duration_h",
+                    "from_label",
+                    "index",
+                    "planned_driving_h",
+                    "polyline",
+                    "to_label"
+                ]
+            },
+            "RouteProfile": {
+                "enum": [
+                    "driving-hgv",
+                    "driving-car"
+                ],
+                "type": "string",
+                "description": "* `driving-hgv` - Hgv\n* `driving-car` - Car"
+            },
+            "Stop": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "$ref": "#/components/schemas/StopKind"
+                    },
+                    "lat": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "lng": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "label_source": {
+                        "$ref": "#/components/schemas/LabelSource"
+                    },
+                    "arrive_at": {
+                        "type": "string"
+                    },
+                    "depart_at": {
+                        "type": "string"
+                    },
+                    "duration_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "duty_status": {
+                        "$ref": "#/components/schemas/DutyStatus"
+                    },
+                    "cumulative_mi": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "leg_index": {
+                        "type": "integer",
+                        "maximum": 1,
+                        "minimum": 0
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "arrive_at",
+                    "cumulative_mi",
+                    "depart_at",
+                    "duration_h",
+                    "duty_status",
+                    "id",
+                    "kind",
+                    "label",
+                    "label_source",
+                    "lat",
+                    "leg_index",
+                    "lng",
+                    "note",
+                    "reason"
+                ]
+            },
+            "StopCounts": {
+                "type": "object",
+                "properties": {
+                    "fuel": {
+                        "type": "integer"
+                    },
+                    "break": {
+                        "type": "integer"
+                    },
+                    "rest": {
+                        "type": "integer"
+                    },
+                    "restart": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "break",
+                    "fuel",
+                    "rest",
+                    "restart"
+                ]
+            },
+            "StopKind": {
+                "enum": [
+                    "start",
+                    "pickup",
+                    "dropoff",
+                    "fuel",
+                    "break",
+                    "rest",
+                    "restart",
+                    "end"
+                ],
+                "type": "string",
+                "description": "* `start` - Start\n* `pickup` - Pickup\n* `dropoff` - Dropoff\n* `fuel` - Fuel\n* `break` - Break\n* `rest` - Rest\n* `restart` - Restart\n* `end` - End"
+            },
+            "TimelineEvent": {
+                "type": "object",
+                "properties": {
+                    "start_min": {
+                        "type": "integer"
+                    },
+                    "end_min": {
+                        "type": "integer"
+                    },
+                    "start_at": {
+                        "type": "string"
+                    },
+                    "end_at": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/DutyStatus"
+                    },
+                    "stop_id": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "start_label": {
+                        "type": "string"
+                    },
+                    "end_label": {
+                        "type": "string"
+                    },
+                    "start_mi": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "end_mi": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "note": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "end_at",
+                    "end_label",
+                    "end_mi",
+                    "end_min",
+                    "note",
+                    "start_at",
+                    "start_label",
+                    "start_mi",
+                    "start_min",
+                    "status",
+                    "stop_id"
+                ]
+            },
+            "TimezoneInfo": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "abbreviation": {
+                        "type": "string"
+                    },
+                    "utc_offset": {
+                        "type": "string"
+                    },
+                    "utc_offset_min": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "abbreviation",
+                    "name",
+                    "utc_offset",
+                    "utc_offset_min"
+                ]
+            },
+            "TripMeta": {
+                "type": "object",
+                "properties": {
+                    "places": {
+                        "$ref": "#/components/schemas/ResolvedPlaces"
+                    },
+                    "timezone": {
+                        "$ref": "#/components/schemas/TimezoneInfo"
+                    },
+                    "start_at": {
+                        "type": "string",
+                        "description": "ISO 8601 with the frozen trip offset."
+                    },
+                    "cycle_used_start_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "log_header": {
+                        "$ref": "#/components/schemas/LogHeader"
+                    },
+                    "assumptions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Assumption"
+                        }
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Warning"
+                        }
+                    }
+                },
+                "required": [
+                    "assumptions",
+                    "cycle_used_start_h",
+                    "log_header",
+                    "places",
+                    "start_at",
+                    "timezone",
+                    "warnings"
+                ]
+            },
+            "TripSummary": {
+                "type": "object",
+                "properties": {
+                    "total_distance_mi": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "driving_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "on_duty_not_driving_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "on_duty_total_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "trip_duration_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "arrival_at": {
+                        "type": "string"
+                    },
+                    "released_at": {
+                        "type": "string"
+                    },
+                    "sheet_count": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "cycle_used_start_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "cycle_used_end_h": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "counts": {
+                        "$ref": "#/components/schemas/StopCounts"
+                    }
+                },
+                "required": [
+                    "arrival_at",
+                    "counts",
+                    "cycle_used_end_h",
+                    "cycle_used_start_h",
+                    "driving_h",
+                    "on_duty_not_driving_h",
+                    "on_duty_total_h",
+                    "released_at",
+                    "sheet_count",
+                    "total_distance_mi",
+                    "trip_duration_h"
+                ]
+            },
+            "Warning": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Open enum: CYCLE_RESTART_AT_START, CAR_PROFILE_USED, LABELS_APPROXIMATED."
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "message"
+                ]
+            },
+            "PlaceInput": {
+                "type": "object",
+                "description": "A place picked from autocomplete. Unknown keys are ignored (contract section 1).",
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "lat": {
+                        "type": "number",
+                        "format": "double",
+                        "maximum": 90,
+                        "minimum": -90
+                    },
+                    "lng": {
+                        "type": "number",
+                        "format": "double",
+                        "maximum": 180,
+                        "minimum": -180
+                    }
+                },
+                "required": [
+                    "label",
+                    "lat",
+                    "lng"
+                ]
+            },
+            "LocationInput": {
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 200
+                    },
+                    {
+                        "$ref": "#/components/schemas/PlaceInput"
+                    }
+                ]
             }
         }
     }

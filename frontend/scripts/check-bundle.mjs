@@ -4,7 +4,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
 
-const BUDGET_GZIP_KB = 150; // scaffold baseline is about 91 kB; headroom for form, zod, log sheets
+// Shell + form only: react-dom (~63 kB gzip), react-hook-form, zod/mini, query, base-ui combobox and
+// number field. Results (summary, stops, logs) and the map load in their own chunks. Measured 157 kB.
+const BUDGET_GZIP_KB = 165;
 const FORBIDDEN = ["leaflet", "jspdf", "svg2pdf"];
 
 const dir = join(import.meta.dirname, "..", "dist");

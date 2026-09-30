@@ -10,6 +10,8 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
+
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 # Attributes every LogRecord has. Anything else was passed via `extra=` and is emitted.
@@ -22,7 +24,31 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
+def _sensitive_httpx_strings(exc: BaseException | None) -> list[str]:
+    """Message, URL and query of every httpx error in the exception chain (they embed user text)."""
+    found: list[str] = []
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if isinstance(exc, httpx.HTTPError):
+            found.append(str(exc))
+            try:
+                url = exc.request.url  # type: ignore[attr-defined]  # raises RuntimeError when unset
+                found.extend([str(url), url.query.decode("utf-8", "replace")])
+            except (RuntimeError, AttributeError):
+                pass
+        exc = exc.__cause__ or exc.__context__
+    return [s for s in found if len(s) > 3]
+
+
 class JsonFormatter(logging.Formatter):
+    def formatException(self, ei: Any) -> str:  # noqa: N802 - stdlib override
+        """Traceback without locals, with httpx messages, URLs and queries redacted (ARCHITECTURE 11)."""
+        text = super().formatException(ei)
+        for secret in sorted(_sensitive_httpx_strings(ei[1]), key=len, reverse=True):
+            text = text.replace(secret, "<redacted>")
+        return text
+
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
             "ts": datetime.fromtimestamp(record.created, tz=UTC).isoformat(timespec="milliseconds"),

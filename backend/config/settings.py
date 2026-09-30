@@ -40,6 +40,9 @@ else:
     ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[::1]"])
     NUM_PROXIES = env.int("NUM_PROXIES", default=0)
 
+# Constant on purpose: user input must never be able to choose the upstream host.
+ORS_BASE_URL = "https://api.openrouteservice.org"
+
 _render_host = env.str("RENDER_EXTERNAL_HOSTNAME", default="")
 if _render_host and _render_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_render_host)
@@ -105,6 +108,12 @@ CACHES = {
         "LOCATION": "eld-routes",
         "OPTIONS": {"MAX_ENTRIES": 100},
     },
+    # ORS spend counters. Separate so filling throttle keys can never evict (reset) a counter.
+    "budgets": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "eld-budgets",
+        "OPTIONS": {"MAX_ENTRIES": 500},
+    },
 }
 
 # --- Request limits -------------------------------------------------------------------------------
@@ -123,6 +132,21 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "trips.errors.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
     "NUM_PROXIES": NUM_PROXIES,
+    # Nothing is unthrottled by accident: a view opts out (health) or picks its own (plan, places).
+    "DEFAULT_THROTTLE_CLASSES": ["trips.throttles.DefaultIpThrottle"],
+    # Rates: docs/API_CONTRACT.md section 8.1 (authority). Constants, not env vars.
+    "DEFAULT_THROTTLE_RATES": {
+        "default_ip": "30/min",
+        "docs_assets_ip": "120/min",
+        "plan_ip_min": "10/min",
+        "plan_ip_day": "100/day",
+        "plan_global_min": "18/min",
+        "plan_global_day": "900/day",
+        "places_ip_min": "60/min",
+        "places_ip_day": "500/day",
+        "places_global_min": "90/min",
+        "places_global_day": "900/day",
+    },
 }
 
 SPECTACULAR_SETTINGS = {
@@ -132,7 +156,18 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api/v1",
     "COMPONENT_SPLIT_REQUEST": True,
-    "ENUM_NAME_OVERRIDES": {"ErrorCode": "trips.errors.ErrorCode"},
+    "ENUM_NAME_OVERRIDES": {
+        "ErrorCode": "trips.errors.ErrorCode",
+        "DutyStatus": "trips.types.DutyStatus",
+        "StopKind": "trips.types.StopKind",
+        "LabelSource": "trips.types.LabelSource",
+        "RouteProfile": "trips.types.RouteProfile",
+    },
+    "ENUM_SUFFIX": "",
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "trips.schema_hooks.finalize_location_components",
+    ],
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
 }

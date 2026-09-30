@@ -1,0 +1,44 @@
+/* Log sheet print rules (LOG_SHEET_RENDER_SPEC 5.2). Imported once by the logs feature. */
+.log-print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0.4in;
+  }
+  html,
+  body {
+    background: var(--color-surface);
+  }
+  .print-hidden,
+  header,
+  nav,
+  form,
+  footer,
+  .map,
+  [role="tablist"],
+  details {
+    display: none !important;
+  }
+  .log-print-only {
+    display: block;
+  }
+  .log-sheet-page {
+    break-inside: avoid;
+    break-after: page;
+    width: 100%;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .log-sheet-page:last-child {
+    break-after: auto;
+  }
+  /* Overrides scroll mode (fixed 960 px) and Fit width: print always fills the printable width. */
+  .log-sheet-page svg {
+    width: 100% !important;
+    max-width: none;
+    height: auto;
+  }
+}

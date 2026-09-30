@@ -24,6 +24,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/places/autocomplete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * US place suggestions
+         * @description GET /api/v1/places/autocomplete?q=.
+         */
+        get: operations["autocompletePlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trips/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Plan a trip with stops and daily log sheets
+         * @description POST /api/v1/trips/plan.
+         */
+        post: operations["planTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -32,7 +72,32 @@ export interface components {
          * @description * `1` - 1
          * @enum {string}
          */
-        ApiVersionEnum: "1";
+        ApiVersion: "1";
+        Assumption: {
+            id: string;
+            text: string;
+        };
+        AutocompleteResponse: {
+            items: components["schemas"]["PlaceSuggestion"][];
+        };
+        Bounds: {
+            /** Format: double */
+            south: number;
+            /** Format: double */
+            west: number;
+            /** Format: double */
+            north: number;
+            /** Format: double */
+            east: number;
+        };
+        /**
+         * @description * `off` - Off
+         *     * `sleeper` - Sleeper
+         *     * `driving` - Driving
+         *     * `on_duty` - On Duty
+         * @enum {string}
+         */
+        DutyStatus: "off" | "sleeper" | "driving" | "on_duty";
         ErrorBody: {
             code: components["schemas"]["ErrorCode"];
             message: string;
@@ -65,14 +130,263 @@ export interface components {
             message: string;
         };
         HealthResponse: {
-            status: components["schemas"]["StatusEnum"];
-            api_version: components["schemas"]["ApiVersionEnum"];
+            status: components["schemas"]["HealthResponseStatus"];
+            api_version: components["schemas"]["ApiVersion"];
         };
         /**
          * @description * `ok` - ok
          * @enum {string}
          */
-        StatusEnum: "ok";
+        HealthResponseStatus: "ok";
+        /**
+         * @description * `input` - Input
+         *     * `geocoded` - Geocoded
+         *     * `nearby` - Nearby
+         *     * `coordinates` - Coordinates
+         * @enum {string}
+         */
+        LabelSource: "input" | "geocoded" | "nearby" | "coordinates";
+        LogDay: {
+            /** @description YYYY-MM-DD in the frozen trip offset. */
+            date: string;
+            sheet_index: number;
+            from_label: string;
+            to_label: string;
+            /** Format: double */
+            miles_driven: number;
+            segments: components["schemas"]["LogSegment"][];
+            remarks: components["schemas"]["LogRemark"][];
+            totals: components["schemas"]["LogTotals"];
+            recap: components["schemas"]["LogRecap"];
+        };
+        LogHeader: {
+            driver_name: string;
+            carrier_name: string;
+            main_office_address: string;
+            home_terminal_address: string;
+            truck_number: string;
+            trailer_number: string;
+            shipping_doc: string;
+            shipper_commodity: string;
+        };
+        /** @description Header text only; never affects HOS. Missing, null or blank all mean "use the default". */
+        LogHeaderRequest: {
+            driver_name?: string | null;
+            carrier_name?: string | null;
+            main_office_address?: string | null;
+            home_terminal_address?: string | null;
+            truck_number?: string | null;
+            trailer_number?: string | null;
+            shipping_doc?: string | null;
+            shipper_commodity?: string | null;
+        };
+        LogRecap: {
+            /** Format: double */
+            on_duty_today: number;
+            /** Format: double */
+            a_last7: number;
+            /** Format: double */
+            b_available_tomorrow: number;
+            /** Format: double */
+            c_last8: number;
+            restart_note: string | null;
+        };
+        LogRemark: {
+            minute: number;
+            location_label: string;
+            note: string;
+        };
+        LogSegment: {
+            start_min: number;
+            end_min: number;
+            status: components["schemas"]["DutyStatus"];
+            location_label: string;
+            note: string;
+            stationary: boolean;
+            stop_id: string | null;
+        };
+        LogTotals: {
+            /** Format: double */
+            off: number;
+            /** Format: double */
+            sleeper: number;
+            /** Format: double */
+            driving: number;
+            /** Format: double */
+            on_duty: number;
+        };
+        PlaceSuggestion: {
+            label: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lng: number;
+        };
+        PlanTripRequest: {
+            current_location: components["schemas"]["LocationInput"];
+            pickup_location: components["schemas"]["LocationInput"];
+            dropoff_location: components["schemas"]["LocationInput"];
+            /** Format: double */
+            current_cycle_used_hours: number;
+            /** Format: date */
+            start_date?: string;
+            start_time?: string;
+            log_header?: components["schemas"]["LogHeaderRequest"] | null;
+        };
+        PlanTripResponse: {
+            trip: components["schemas"]["TripMeta"];
+            route: components["schemas"]["Route"];
+            stops: components["schemas"]["Stop"][];
+            timeline: components["schemas"]["TimelineEvent"][];
+            days: components["schemas"]["LogDay"][];
+            summary: components["schemas"]["TripSummary"];
+        };
+        ResolvedPlace: {
+            label: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lng: number;
+            source: components["schemas"]["LabelSource"];
+        };
+        ResolvedPlaces: {
+            current: components["schemas"]["ResolvedPlace"];
+            pickup: components["schemas"]["ResolvedPlace"];
+            dropoff: components["schemas"]["ResolvedPlace"];
+        };
+        Route: {
+            profile: components["schemas"]["RouteProfile"];
+            /** Format: double */
+            distance_mi: number;
+            /** Format: double */
+            planned_driving_h: number;
+            bounds: components["schemas"]["Bounds"];
+            legs: components["schemas"]["RouteLeg"][];
+        };
+        RouteLeg: {
+            index: number;
+            from_label: string;
+            to_label: string;
+            /** Format: double */
+            distance_mi: number;
+            /** Format: double */
+            duration_h: number;
+            /** Format: double */
+            planned_driving_h: number;
+            /** @description Encoded polyline, precision 5. */
+            polyline: string;
+            bounds: components["schemas"]["Bounds"];
+        };
+        /**
+         * @description * `driving-hgv` - Hgv
+         *     * `driving-car` - Car
+         * @enum {string}
+         */
+        RouteProfile: "driving-hgv" | "driving-car";
+        Stop: {
+            id: string;
+            kind: components["schemas"]["StopKind"];
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lng: number;
+            label: string;
+            label_source: components["schemas"]["LabelSource"];
+            arrive_at: string;
+            depart_at: string;
+            /** Format: double */
+            duration_h: number;
+            duty_status: components["schemas"]["DutyStatus"];
+            /** Format: double */
+            cumulative_mi: number;
+            leg_index: number;
+            note: string;
+            reason: string;
+        };
+        StopCounts: {
+            fuel: number;
+            break: number;
+            rest: number;
+            restart: number;
+        };
+        /**
+         * @description * `start` - Start
+         *     * `pickup` - Pickup
+         *     * `dropoff` - Dropoff
+         *     * `fuel` - Fuel
+         *     * `break` - Break
+         *     * `rest` - Rest
+         *     * `restart` - Restart
+         *     * `end` - End
+         * @enum {string}
+         */
+        StopKind: "start" | "pickup" | "dropoff" | "fuel" | "break" | "rest" | "restart" | "end";
+        TimelineEvent: {
+            start_min: number;
+            end_min: number;
+            start_at: string;
+            end_at: string;
+            status: components["schemas"]["DutyStatus"];
+            stop_id: string | null;
+            start_label: string;
+            end_label: string;
+            /** Format: double */
+            start_mi: number;
+            /** Format: double */
+            end_mi: number;
+            note: string;
+        };
+        TimezoneInfo: {
+            name: string;
+            abbreviation: string;
+            utc_offset: string;
+            utc_offset_min: number;
+        };
+        TripMeta: {
+            places: components["schemas"]["ResolvedPlaces"];
+            timezone: components["schemas"]["TimezoneInfo"];
+            /** @description ISO 8601 with the frozen trip offset. */
+            start_at: string;
+            /** Format: double */
+            cycle_used_start_h: number;
+            log_header: components["schemas"]["LogHeader"];
+            assumptions: components["schemas"]["Assumption"][];
+            warnings: components["schemas"]["Warning"][];
+        };
+        TripSummary: {
+            /** Format: double */
+            total_distance_mi: number;
+            /** Format: double */
+            driving_h: number;
+            /** Format: double */
+            on_duty_not_driving_h: number;
+            /** Format: double */
+            on_duty_total_h: number;
+            /** Format: double */
+            trip_duration_h: number;
+            arrival_at: string;
+            released_at: string;
+            sheet_count: number;
+            /** Format: double */
+            cycle_used_start_h: number;
+            /** Format: double */
+            cycle_used_end_h: number;
+            counts: components["schemas"]["StopCounts"];
+        };
+        Warning: {
+            /** @description Open enum: CYCLE_RESTART_AT_START, CAR_PROFILE_USED, LABELS_APPROXIMATED. */
+            code: string;
+            message: string;
+        };
+        /** @description A place picked from autocomplete. Unknown keys are ignored (contract section 1). */
+        PlaceInput: {
+            label: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lng: number;
+        };
+        LocationInput: string | components["schemas"]["PlaceInput"];
     };
     responses: never;
     parameters: never;
@@ -102,6 +416,142 @@ export interface operations {
             /** @description Unexpected error */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    autocompletePlaces: {
+        parameters: {
+            query: {
+                /** @description 3 to 100 characters after trimming. No control characters. */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description At most 5 suggestions. Cache-Control: public, max-age=3600. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutocompleteResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR: q is missing, too short, too long or has control characters. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limited. Read retry_after_s or the Retry-After header. */
+            429: {
+                headers: {
+                    /** @description Seconds to wait, 1 to 300. Same value as error.retry_after_s. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. Quote request_id. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Routing service unavailable or out of quota (UPSTREAM_UNAVAILABLE, UPSTREAM_QUOTA_EXCEEDED). */
+            503: {
+                headers: {
+                    /** @description Seconds to wait, 1 to 300. Same value as error.retry_after_s. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    planTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanTripRequest"];
+            };
+        };
+        responses: {
+            /** @description The plan. Cache-Control: no-store. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTripResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR: the request must change. See field and details. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description LOCATION_NOT_FOUND, UNSUPPORTED_LOCATION, ROUTE_NOT_FOUND or TRIP_TOO_LONG: the trip cannot be planned as entered. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limited. Read retry_after_s or the Retry-After header. */
+            429: {
+                headers: {
+                    /** @description Seconds to wait, 1 to 300. Same value as error.retry_after_s. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. Quote request_id. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Routing service unavailable or out of quota (UPSTREAM_UNAVAILABLE, UPSTREAM_QUOTA_EXCEEDED). */
+            503: {
+                headers: {
+                    /** @description Seconds to wait, 1 to 300. Same value as error.retry_after_s. */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
