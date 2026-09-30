@@ -13,6 +13,7 @@ from django.core.cache import caches
 
 from config.logging import JsonFormatter
 from routing import budgets, ors_client
+from routing.deadline import Deadline
 from routing.errors import (
     DeadlineExceeded,
     LocationNotFound,
@@ -29,7 +30,6 @@ from routing.errors import (
 )
 from routing.models import METERS_PER_MILE, LegRoute, Place
 from tests.routing.conftest import BASE, TEST_KEY
-from trips.services.deadline import Deadline
 
 START = Place("Richmond, VA", 37.54072, -77.43605)
 END = Place("Charlotte, NC", 35.22709, -80.84313)
@@ -220,6 +220,45 @@ def test_o12_negative_and_non_finite_distance(ors, raw):
         leg()
 
 
+def _bad_response_records(caplog):
+    return [r for r in caplog.records if r.getMessage() == "ors_bad_response"]
+
+
+@pytest.mark.parametrize(
+    ("mocked", "expected_status"),
+    [
+        (httpx.Response(200, text="secret upstream text {"), 200),
+        (httpx.Response(200, json={"routes": []}), 200),
+        (httpx.Response(302, text="secret upstream text"), 302),
+    ],
+)
+def test_malformed_directions_body_is_logged_at_error_without_body_or_url(
+    ors, caplog, mocked, expected_status
+):
+    ors.post(HGV_URL).mock(return_value=mocked)
+    with caplog.at_level(logging.INFO, logger="eld.routing"), pytest.raises(UpstreamBadResponse):
+        leg()
+    (record,) = _bad_response_records(caplog)
+    assert record.levelno == logging.ERROR
+    assert (record.endpoint_kind, record.error_class, record.upstream_status) == (
+        "directions",
+        "UpstreamBadResponse",
+        expected_status,
+    )
+    text = JsonFormatter().format(record)
+    for forbidden in ("secret upstream", "openrouteservice", TEST_KEY, "Richmond", "37.54"):
+        assert forbidden not in text
+
+
+def test_malformed_geocode_body_is_logged_at_error_once(ors, caplog):
+    ors.get(f"{BASE}/geocode/search").mock(return_value=httpx.Response(200, json={"features": "nope"}))
+    with caplog.at_level(logging.INFO, logger="eld.routing"), pytest.raises(UpstreamBadResponse):
+        ors_client.geocode_search(SECRET_TEXT, "pickup_location", Deadline())
+    (record,) = _bad_response_records(caplog)
+    assert record.endpoint_kind == "geocode"
+    assert SECRET_TEXT not in JsonFormatter().format(record)
+
+
 # ---- profiles and codes, O-13 .. O-18 ----
 
 
@@ -239,11 +278,13 @@ def test_o13_2009_falls_back_to_car_once_and_caches_the_result(ors):
 def test_o14_2010_on_both_profiles_is_route_not_found_and_negative_cached(ors):
     hgv = ors.post(HGV_URL).mock(return_value=ors_error(404, 2010))
     car = ors.post(CAR_URL).mock(return_value=ors_error(404, 2010))
-    with pytest.raises(RouteNotFound):
+    with pytest.raises(RouteNotFound) as first:
         leg()
+    assert (first.value.from_label, first.value.to_label) == ("Richmond, VA", "Charlotte, NC")
     assert (hgv.call_count, car.call_count) == (1, 1)
-    with pytest.raises(RouteNotFound):
+    with pytest.raises(RouteNotFound) as second:  # served from the negative cache
         leg()
+    assert (second.value.from_label, second.value.to_label) == ("Richmond, VA", "Charlotte, NC")
     assert (hgv.call_count, car.call_count) == (1, 1)
 
 

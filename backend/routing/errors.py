@@ -32,8 +32,10 @@ class UnsupportedLocation(RoutingError):
 class RouteNotFound(RoutingError):
     """ORS 2009/2010 on the HGV request and on the one driving-car retry (ROUTE_NOT_FOUND)."""
 
-    def __init__(self) -> None:
-        super().__init__("route not found")
+    def __init__(self, from_label: str, to_label: str) -> None:
+        super().__init__("route not found")  # the labels are user-facing text, never part of str(exc)
+        self.from_label = from_label
+        self.to_label = to_label
 
 
 class TripTooLong(RoutingError):
@@ -90,6 +92,8 @@ class DeadlineExceeded(UpstreamUnavailable):
 
 class UpstreamBadResponse(RoutingError):
     """ORS 200 with a malformed or implausible body (UPSTREAM_UNAVAILABLE, logged at ERROR)."""
+
+    upstream_status: int | None = None  # HTTP status of the offending response, set where known
 
     def __init__(self) -> None:
         super().__init__("upstream returned a malformed body")

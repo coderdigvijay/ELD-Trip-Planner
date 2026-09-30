@@ -3,7 +3,42 @@ import { memo, useId, useMemo, type ReactElement } from "react";
 import { BLANK_FORM } from "./BlankForm";
 import { formatLongDate } from "./format";
 import { dropPath } from "./layoutRemarks";
-import { BRACKET_W, LABEL_Y, STATUS_W, VIEW_H, VIEW_W, ROW_TOP } from "./layout";
+import {
+  BRACKET_W,
+  DATE_X,
+  DATE_Y,
+  ENTRY_LG,
+  ENTRY_MD,
+  FOOTER_DATE_X,
+  FOOTER_SHEET_X,
+  FOOTER_Y,
+  FROM_POS,
+  GRAND_TOTAL_Y,
+  HEADER_LINE_X,
+  HEADER_LINE_Y,
+  LABEL_Y,
+  MILES_X,
+  MILES_Y,
+  NOTE_SIZE,
+  RECAP_X,
+  RECAP_Y,
+  REMARK_NOTE_DY,
+  REMARK_TEXT_DX,
+  RESTART_POS,
+  ROW_TOP,
+  SHIPPER_LAST_Y,
+  SHIPPER_LINE_H,
+  SHIPPER_X,
+  SHIPPING_DOC_POS,
+  STATUS_W,
+  TIME_BASE_POS,
+  TO_POS,
+  TOTALS_BASELINE_DY,
+  TOTALS_X,
+  VEHICLE_POS,
+  VIEW_H,
+  VIEW_W,
+} from "./layout";
 import { buildSheetModel, type FieldText } from "./sheetModel";
 import { FONT_MONO, FONT_SANS, INK, PEN, SURFACE } from "./tokens";
 import type { LogDay, LogHeader, TripTimezone } from "./types";
@@ -76,9 +111,14 @@ function LogSheetImpl({
   const uid = useId();
   const titleId = `${uid}-title`;
   const descId = `${uid}-desc`;
+  const remarksId = `${uid}-remarks`;
   const model = useMemo(() => buildSheetModel(day, header, timezone), [day, header, timezone]);
   const { date, remarks, recap } = model;
   const title = `Driver's daily log, ${formatLongDate(day.date)}, sheet ${day.sheet_index} of ${sheetCount}`;
+
+  const describedBy = [summaryId ?? descId, model.remarksText === "" ? null : remarksId]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <svg
@@ -88,12 +128,13 @@ function LogSheetImpl({
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-labelledby={titleId}
-      aria-describedby={summaryId ?? descId}
+      aria-describedby={describedBy}
       className={cn("block h-auto w-full", className)}
       style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
     >
       <title id={titleId}>{title}</title>
       <desc id={descId}>{model.summary}</desc>
+      {model.remarksText === "" ? null : <desc id={remarksId}>{model.remarksText}</desc>}
       <rect width={VIEW_W} height={VIEW_H} fill={SURFACE} />
       {BLANK_FORM}
 
@@ -103,34 +144,44 @@ function LogSheetImpl({
         fill={PEN}
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        <Entry x={365} y={35} size={18} anchor="middle">
+        <Entry x={DATE_X.mm} y={DATE_Y} size={ENTRY_LG} anchor="middle">
           {date.mm}
         </Entry>
-        <Entry x={456} y={35} size={18} anchor="middle">
+        <Entry x={DATE_X.dd} y={DATE_Y} size={ENTRY_LG} anchor="middle">
           {date.dd}
         </Entry>
-        <Entry x={546} y={35} size={18} anchor="middle">
+        <Entry x={DATE_X.yyyy} y={DATE_Y} size={ENTRY_LG} anchor="middle">
           {date.yyyy}
         </Entry>
-        <FieldEntry f={model.from} x={116} y={83} />
-        <FieldEntry f={model.to} x={546} y={83} />
-        <Entry x={190} y={158} size={18} anchor="middle">
+        <FieldEntry f={model.from} {...FROM_POS} />
+        <FieldEntry f={model.to} {...TO_POS} />
+        <Entry x={MILES_X.driving} y={MILES_Y} size={ENTRY_LG} anchor="middle">
           {model.miles}
         </Entry>
-        <Entry x={357} y={158} size={18} anchor="middle">
+        <Entry x={MILES_X.total} y={MILES_Y} size={ENTRY_LG} anchor="middle">
           {model.miles}
         </Entry>
-        <FieldEntry f={model.vehicle} x={271} y={225} anchor="middle" />
-        <FieldEntry f={model.driver} x={700} y={107} anchor="middle" />
-        <FieldEntry f={model.carrier} x={700} y={147} anchor="middle" />
-        <FieldEntry f={model.mainOffice} x={700} y={189} anchor="middle" />
-        <FieldEntry f={model.homeTerminal} x={700} y={231} anchor="middle" />
-        <FieldEntry f={model.shippingDoc} x={48} y={670} />
+        <FieldEntry f={model.vehicle} {...VEHICLE_POS} anchor="middle" />
+        <FieldEntry f={model.driver} x={HEADER_LINE_X} y={HEADER_LINE_Y.driver} anchor="middle" />
+        <FieldEntry f={model.carrier} x={HEADER_LINE_X} y={HEADER_LINE_Y.carrier} anchor="middle" />
+        <FieldEntry
+          f={model.mainOffice}
+          x={HEADER_LINE_X}
+          y={HEADER_LINE_Y.mainOffice}
+          anchor="middle"
+        />
+        <FieldEntry
+          f={model.homeTerminal}
+          x={HEADER_LINE_X}
+          y={HEADER_LINE_Y.homeTerminal}
+          anchor="middle"
+        />
+        <FieldEntry f={model.shippingDoc} {...SHIPPING_DOC_POS} />
         {model.shipper.lines.map((line, i, all) => (
           <Entry
             key={`${i}-${line}`}
-            x={48}
-            y={730 - (all.length - 1 - i) * 12}
+            x={SHIPPER_X}
+            y={SHIPPER_LAST_Y - (all.length - 1 - i) * SHIPPER_LINE_H}
             size={model.shipper.size}
             title={i === all.length - 1 && model.shipper.clipped ? model.shipper.full : undefined}
           >
@@ -138,49 +189,42 @@ function LogSheetImpl({
           </Entry>
         ))}
 
-        <Entry x={954} y={ROW_TOP.off + 29} size={15} anchor="end">
-          {model.rowTotals.off}
-        </Entry>
-        <Entry x={954} y={ROW_TOP.sleeper + 29} size={15} anchor="end">
-          {model.rowTotals.sleeper}
-        </Entry>
-        <Entry x={954} y={ROW_TOP.driving + 29} size={15} anchor="end">
-          {model.rowTotals.driving}
-        </Entry>
-        <Entry x={954} y={ROW_TOP.on_duty + 29} size={15} anchor="end">
-          {model.rowTotals.on_duty}
-        </Entry>
-        <Entry x={954} y={499} size={15} anchor="end">
+        {(["off", "sleeper", "driving", "on_duty"] as const).map((status) => (
+          <Entry
+            key={status}
+            x={TOTALS_X}
+            y={ROW_TOP[status] + TOTALS_BASELINE_DY}
+            size={ENTRY_MD}
+            anchor="end"
+          >
+            {model.rowTotals[status]}
+          </Entry>
+        ))}
+        <Entry x={TOTALS_X} y={GRAND_TOTAL_Y} size={ENTRY_MD} anchor="end">
           {model.grandTotal}
         </Entry>
 
-        <Entry x={176} y={879} size={15} anchor="middle">
-          {recap.today}
-        </Entry>
-        <Entry x={331} y={879} size={15} anchor="middle">
-          {recap.a}
-        </Entry>
-        <Entry x={411} y={879} size={15} anchor="middle">
-          {recap.b}
-        </Entry>
-        <Entry x={491} y={879} size={15} anchor="middle">
-          {recap.c}
-        </Entry>
-        <Entry x={651} y={879} size={15} anchor="middle">
-          N/A
-        </Entry>
-        <Entry x={731} y={879} size={15} anchor="middle">
-          N/A
-        </Entry>
-        <Entry x={811} y={879} size={15} anchor="middle">
-          N/A
-        </Entry>
+        {(
+          [
+            [RECAP_X.today, recap.today],
+            [RECAP_X.a, recap.a],
+            [RECAP_X.b, recap.b],
+            [RECAP_X.c, recap.c],
+            [RECAP_X.a60, "N/A"],
+            [RECAP_X.b60, "N/A"],
+            [RECAP_X.c60, "N/A"],
+          ] as const
+        ).map(([rx, value]) => (
+          <Entry key={rx} x={rx} y={RECAP_Y} size={ENTRY_MD} anchor="middle">
+            {value}
+          </Entry>
+        ))}
         {recap.restartLines.map((line, i) => (
           <Entry
             key={line}
-            x={856}
-            y={910 + i * 13}
-            size={10}
+            x={RESTART_POS.x}
+            y={RESTART_POS.y + i * RESTART_POS.lineH}
+            size={NOTE_SIZE}
             weight={400}
             title={i === 0 ? (recap.restartFull ?? undefined) : undefined}
           >
@@ -228,11 +272,11 @@ function LogSheetImpl({
                 transform={`translate(${r.ax} ${LABEL_Y}) rotate(45)`}
               >
                 <title>{r.title}</title>
-                <text x={4} y={0} fontSize={r.size} fontWeight={500}>
+                <text x={REMARK_TEXT_DX} y={0} fontSize={r.size} fontWeight={500}>
                   {r.line1}
                 </text>
                 {r.line2 !== null ? (
-                  <text x={4} y={13} fontSize={10} fontWeight={400}>
+                  <text x={REMARK_TEXT_DX} y={REMARK_NOTE_DY} fontSize={NOTE_SIZE} fontWeight={400}>
                     {r.line2}
                   </text>
                 ) : null}
@@ -241,14 +285,26 @@ function LogSheetImpl({
       </g>
 
       <g data-part="footer" fill={INK} fontSize={10}>
-        <text x={44} y={1008} fontFamily={FONT_MONO} fontWeight={400}>
+        <text x={FOOTER_DATE_X} y={FOOTER_Y} fontFamily={FONT_MONO} fontWeight={400}>
           {`${date.mm}/${date.dd}/${date.yyyy}`}
         </text>
-        <text x={944} y={1008} fontFamily={FONT_SANS} fontWeight={600} textAnchor="end">
+        <text
+          x={FOOTER_SHEET_X}
+          y={FOOTER_Y}
+          fontFamily={FONT_SANS}
+          fontWeight={600}
+          textAnchor="end"
+        >
           {`Sheet ${day.sheet_index} of ${sheetCount}`}
         </text>
         {model.timeBase ? (
-          <text x={500} y={1008} fontFamily={FONT_SANS} fontWeight={400} textAnchor="middle">
+          <text
+            x={TIME_BASE_POS.x}
+            y={TIME_BASE_POS.y}
+            fontFamily={FONT_SANS}
+            fontWeight={400}
+            textAnchor="end"
+          >
             {model.timeBase}
           </text>
         ) : null}

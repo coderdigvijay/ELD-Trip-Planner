@@ -745,8 +745,9 @@
                     "current_cycle_used_hours": {
                         "type": "number",
                         "format": "double",
+                        "minimum": 0,
                         "maximum": 70,
-                        "minimum": 0
+                        "multipleOf": 0.25
                     },
                     "start_date": {
                         "type": "string",

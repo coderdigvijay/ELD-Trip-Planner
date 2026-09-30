@@ -3,7 +3,7 @@
 from django.conf import settings
 from django.urls import include, path, re_path
 
-from trips.views import DocsAssetView
+from trips.views import DocsAssetView, NotFoundView
 
 handler400 = "trips.errors.handler400"
 handler404 = "trips.errors.handler404"
@@ -17,4 +17,5 @@ urlpatterns = [
         DocsAssetView.as_view(),
         name="docs-assets",
     ),
+    re_path(r"^.*$", NotFoundView.as_view(), name="not-found"),  # last: unknown paths get the JSON envelope
 ]

@@ -47,7 +47,7 @@ vi.mock("@/features/map/MapView", () => ({
 }));
 
 // The results chunk is imported on demand; the first transform of the log sheets is slow.
-vi.setConfig({ testTimeout: 20_000 });
+vi.setConfig({ testTimeout: 40_000 });
 
 beforeAll(() => {
   server.listen();
@@ -124,6 +124,53 @@ describe("Workspace", () => {
     const region = screen.getByRole("region", { name: "Results" });
     expect(region).toHaveAttribute("id", "results");
     expect(region).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("clears the changed-inputs notice once the edited inputs are planned", async () => {
+    server.use(
+      health,
+      http.post("*/api/v1/trips/plan", () => HttpResponse.json(plan)),
+    );
+    const user = userEvent.setup();
+    render(<App queryClient={client()} />);
+    await fillAndSubmit(user);
+    await screen.findByRole("heading", { name: "Summary" });
+    const notice = /Trip inputs changed/;
+    expect(screen.queryByText(notice)).not.toBeInTheDocument();
+
+    const dropoff = screen.getByRole("combobox", { name: "Dropoff" });
+    await user.clear(dropoff);
+    await user.type(dropoff, "Omaha, NE");
+    expect(await screen.findByText(notice)).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Plan trip" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Plan trip" })).not.toHaveAttribute(
+        "aria-disabled",
+      );
+    });
+    await screen.findByRole("heading", { name: "Summary" });
+    expect(screen.queryByText(notice)).not.toBeInTheDocument();
+  });
+
+  it("puts a phone-only Print logs button in the header once results exist", async () => {
+    server.use(
+      health,
+      http.post("*/api/v1/trips/plan", () => HttpResponse.json(plan)),
+    );
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    render(<App queryClient={client()} />);
+    const header = screen.getByRole("banner");
+    expect(within(header).queryByRole("button", { name: "Print logs" })).toBeNull();
+
+    await fillAndSubmit(user);
+    const button = await within(header).findByRole("button", { name: "Print logs" });
+    expect(button).toHaveClass("md:hidden");
+    await user.click(button);
+    expect(print).toHaveBeenCalledTimes(1);
+    print.mockRestore();
   });
 
   it("keeps list, map and logs in sync on selection", async () => {

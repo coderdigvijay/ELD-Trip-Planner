@@ -1,8 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { DailyLogs, type DailyLogsState, type LogFocus } from "@/features/logs";
 import { LazyMapView, type MapPanelState } from "@/features/map";
 import {
+  createHoverStore,
+  hasWarning,
+  LABELS_APPROXIMATED,
   logFocusForStop,
   StopTimeline,
   TripSummary,
@@ -41,6 +44,7 @@ function stopsState(plan: PlanTripResponse | null, loading: boolean): StopTimeli
     days: plan.days,
     timezone: plan.trip.timezone,
     counts: plan.summary.counts,
+    approximate: hasWarning(plan.trip.warnings, LABELS_APPROXIMATED),
   };
 }
 
@@ -77,6 +81,7 @@ export function ResultsMain({
   onSelectStop,
   onLogFocus,
 }: ResultsMainProps) {
+  const [hover] = useState(createHoverStore);
   function select(id: string | null) {
     onSelectStop(id);
     const stop = plan?.stops.find((candidate) => candidate.id === id);
@@ -89,16 +94,18 @@ export function ResultsMain({
   return (
     <>
       {summarySlot ?? <TripSummary state={summaryState(plan, loading)} stale={stale} />}
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
         <LazyMapView
           state={mapState(plan, loading)}
           selectedStopId={selectedStopId}
           onSelectStop={select}
+          hover={hover}
         />
         <StopTimeline
           state={stopsState(plan, loading)}
           selectedStopId={selectedStopId}
           onSelectStop={select}
+          hover={hover}
         />
       </div>
     </>

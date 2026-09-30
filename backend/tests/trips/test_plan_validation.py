@@ -402,3 +402,13 @@ def test_wrong_shape_messages_do_not_leak_python_type_names(client, plan_service
     text = json.dumps(error)
     for leak in ("dictionary", "got str", "got int", "Expected a"):
         assert leak not in text
+
+
+@pytest.mark.parametrize("body", [b"", b"   "])
+def test_empty_body_is_not_valid_json_not_per_field_errors(client, plan_service, body):
+    response = client.post(PLAN_URL, body, content_type="application/json", CONTENT_LENGTH=str(len(body)))
+    assert response.status_code == 400
+    error = response.json()["error"]
+    assert error["message"] == "The request body is not valid JSON."
+    assert "details" not in error
+    plan_service.assert_not_called()

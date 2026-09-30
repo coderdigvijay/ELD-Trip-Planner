@@ -11,11 +11,12 @@ Rules enforced here, in one place:
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import math
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import httpx
@@ -24,7 +25,7 @@ from django.conf import settings
 from django.core.cache import caches
 from tenacity import Retrying, retry_if_exception, stop_after_attempt, stop_any, wait_random
 
-from routing import budgets
+from routing import budgets, stats
 from routing.cache_keys import (
     AUTOCOMPLETE_TTL,
     DIRECTIONS_TTL,
@@ -37,6 +38,7 @@ from routing.cache_keys import (
     geocode_key,
     reverse_key,
 )
+from routing.deadline import Deadline
 from routing.errors import (
     DeadlineExceeded,
     LocationNotFound,
@@ -52,7 +54,6 @@ from routing.errors import (
 )
 from routing.labels import street_label_from_properties
 from routing.models import MAX_TRIP_M, LegRoute, Place, Profile
-from trips.services.deadline import Deadline
 
 logger = logging.getLogger("eld.routing")
 
@@ -96,6 +97,36 @@ def _log_failure(kind: str, error_class: str, status: int | None) -> None:
         "ors_call_failed",
         extra={"endpoint_kind": kind, "error_class": error_class, "upstream_status": status},
     )
+
+
+def _logs_bad_response[**P, R](kind: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Log a malformed ORS body at ERROR once, where the endpoint kind is known.
+
+    Class, kind and status only: never the body, the URL or any user text. A 200 that fails to parse
+    is the only way to get here without a status already set.
+    """
+
+    def decorate(func: Callable[P, R]) -> Callable[P, R]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            try:
+                return func(*args, **kwargs)
+            except UpstreamBadResponse as exc:
+                if exc.upstream_status is None:
+                    exc.upstream_status = 200
+                logger.error(
+                    "ors_bad_response",
+                    extra={
+                        "endpoint_kind": kind,
+                        "error_class": type(exc).__name__,
+                        "upstream_status": exc.upstream_status,
+                    },
+                )
+                raise
+
+        return wrapper
+
+    return decorate
 
 
 def _header_seconds(headers: httpx.Headers, *names: str) -> float | None:
@@ -212,6 +243,7 @@ def _attempt(
 ) -> dict[str, Any]:
     deadline.ensure_time_left()
     budgets.spend(kind)
+    stats.record_call(kind)
     key = settings.ORS_API_KEY
     if not key:
         logger.critical("ors_key_missing", extra={"endpoint_kind": kind})
@@ -226,7 +258,11 @@ def _attempt(
             timeout=deadline.http_timeout(read_cap_s),
         ) as response:
             _note_quota(kind, response)
-            return _classify(kind, response, deadline)
+            try:
+                return _classify(kind, response, deadline)
+            except UpstreamBadResponse as exc:
+                exc.upstream_status = response.status_code
+                raise
     except httpx.HTTPError as exc:
         _log_failure(kind, type(exc).__name__, None)
         raise UpstreamUnavailable from None
@@ -362,6 +398,7 @@ def _parse_leg(body: dict[str, Any], profile: Profile) -> LegRoute:
 # ---------------------------------------------------------------------------------------------
 
 
+@_logs_bad_response("geocode")
 def geocode_search(text: str, field: str, deadline: Deadline) -> Place:
     """Resolve free text to one lower-48 place. Raises LocationNotFound / UnsupportedLocation."""
     try:
@@ -371,7 +408,9 @@ def geocode_search(text: str, field: str, deadline: Deadline) -> Place:
         raise LocationNotFound(field) from None
     cache = caches["geo"]
     place = cache.get(key, _MISS)
-    if place is _MISS:
+    if place is not _MISS:
+        stats.record_cache_hit("geocode")
+    else:
         body = _call(
             "geocode",
             deadline,
@@ -394,6 +433,7 @@ def geocode_search(text: str, field: str, deadline: Deadline) -> Place:
     return place
 
 
+@_logs_bad_response("autocomplete")
 def autocomplete(text: str) -> tuple[Place, ...]:
     """Up to 5 lower-48 suggestions. One attempt, 5 s deadline: the next keystroke is the retry."""
     try:
@@ -404,6 +444,7 @@ def autocomplete(text: str) -> tuple[Place, ...]:
     cache = caches["geo"]
     cached = cache.get(key, _MISS)
     if cached is not _MISS:
+        stats.record_cache_hit("autocomplete")
         return cached
     body = _call(
         "autocomplete",
@@ -424,31 +465,37 @@ def autocomplete(text: str) -> tuple[Place, ...]:
     return places
 
 
+@_logs_bad_response("reverse")
+def _reverse_lookup(lat: float, lng: float, deadline: Deadline) -> str | None:
+    key = reverse_key(lat, lng)
+    cache = caches["geo"]
+    cached = cache.get(key, _MISS)
+    if cached is not _MISS:
+        stats.record_cache_hit("reverse")
+        return cached
+    body = _call(
+        "reverse",
+        deadline,
+        "GET",
+        "/geocode/reverse",
+        params={
+            "point.lat": round(lat, 2),
+            "point.lon": round(lng, 2),
+            "boundary.country": "US",
+            "layers": "locality,localadmin,county",
+            "size": 1,
+        },
+    )
+    place = next((p for p in (_place_from_feature(f) for f in _features(body)) if p and p.us), None)
+    label = place.label if place else None
+    cache.set(key, label, REVERSE_TTL.hit_s if label else REVERSE_TTL.not_found_s)
+    return label
+
+
 def reverse_label(lat: float, lng: float, deadline: Deadline) -> str | None:
     """'City, ST' for a point, or None. Never raises: a failed label is a fallback, not an error."""
     try:
-        key = reverse_key(lat, lng)
-        cache = caches["geo"]
-        cached = cache.get(key, _MISS)
-        if cached is not _MISS:
-            return cached
-        body = _call(
-            "reverse",
-            deadline,
-            "GET",
-            "/geocode/reverse",
-            params={
-                "point.lat": round(lat, 2),
-                "point.lon": round(lng, 2),
-                "boundary.country": "US",
-                "layers": "locality,localadmin,county",
-                "size": 1,
-            },
-        )
-        place = next((p for p in (_place_from_feature(f) for f in _features(body)) if p and p.us), None)
-        label = place.label if place else None
-        cache.set(key, label, REVERSE_TTL.hit_s if label else REVERSE_TTL.not_found_s)
-        return label
+        return _reverse_lookup(lat, lng, deadline)
     except Exception as exc:  # noqa: BLE001 - reverse geocoding must never fail a plan
         logger.info("reverse_label_skipped", extra={"error_class": type(exc).__name__})
         return None
@@ -471,6 +518,7 @@ def _directions_call(profile: Profile, start: Place, end: Place, deadline: Deadl
     return _parse_leg(response, profile)
 
 
+@_logs_bad_response("directions")
 def directions_leg(start: Place, end: Place, deadline: Deadline) -> LegRoute:
     """One leg, HGV first. On ORS 2009/2010 only, one driving-car retry (profile says which won)."""
     start_pt, end_pt = _rounded_point(start), _rounded_point(end)
@@ -479,8 +527,10 @@ def directions_leg(start: Place, end: Place, deadline: Deadline) -> LegRoute:
     key = directions_key(HGV, start_pt, end_pt)
     cache = caches["routes"]
     cached = cache.get(key, _MISS)
+    if cached is not _MISS:
+        stats.record_cache_hit("directions")
     if cached is None:
-        raise RouteNotFound
+        raise RouteNotFound(start.label, end.label)
     if cached is not _MISS:
         return cached
     try:
@@ -490,7 +540,7 @@ def directions_leg(start: Place, end: Place, deadline: Deadline) -> LegRoute:
             leg = _directions_call(CAR, start, end, deadline)
         except _Unroutable:
             cache.set(key, None, DIRECTIONS_TTL.not_found_s)
-            raise RouteNotFound from None
+            raise RouteNotFound(start.label, end.label) from None
     cache.set(key, leg, DIRECTIONS_TTL.hit_s)
     return leg
 

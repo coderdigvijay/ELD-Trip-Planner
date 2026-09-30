@@ -1,6 +1,7 @@
 import { bracketPath, brackets, dutyPath, segmentIssues, type BracketSpan } from "./geometry";
 import {
   fitMono,
+  formatClock,
   formatHM,
   formatHours,
   formatLongDate,
@@ -79,6 +80,8 @@ export interface SheetModel {
   date: DateParts;
   title: string;
   summary: string;
+  /** Every API remark, unfolded and in order, for the accessible description ("" when none). */
+  remarksText: string;
   dutyD: string;
   bracketSpans: BracketSpan[];
   bracketD: string;
@@ -105,6 +108,13 @@ export interface SheetModel {
     restartFull: string | null;
   };
   timeBase: string | null;
+}
+
+/** All remarks, including those the drawn sheet folds into their neighbours (spec 3.4 step 0). */
+export function remarksDescription(day: LogDay): string {
+  if (day.remarks.length === 0) return "";
+  const items = day.remarks.map((r) => `${formatClock(r.minute)} ${r.location_label}, ${r.note}`);
+  return `Remarks: ${items.join("; ")}`;
 }
 
 export function sheetProblems(day: LogDay): string[] {
@@ -138,6 +148,7 @@ export function buildSheetModel(
     date: splitDate(day.date),
     title: formatLongDate(day.date),
     summary: `Off ${formatHM(t.off)} · Sleeper ${formatHM(t.sleeper)} · Driving ${formatHM(t.driving)} · On duty ${formatHM(t.on_duty)} · Total ${formatHM(grand)}`,
+    remarksText: remarksDescription(day),
     dutyD: dutyPath(day.segments),
     bracketSpans: brackets(day.segments),
     bracketD: bracketPath(brackets(day.segments)),

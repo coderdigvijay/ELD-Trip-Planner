@@ -169,6 +169,7 @@ dependencies = [
     { name = "polyline" },
     { name = "tenacity" },
     { name = "timezonefinder" },
+    { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
@@ -178,7 +179,6 @@ dev = [
     { name = "pytest-django" },
     { name = "respx" },
     { name = "ruff" },
-    { name = "tzdata" },
 ]
 
 [package.metadata]
@@ -194,6 +194,7 @@ requires-dist = [
     { name = "polyline", specifier = "==2.0.4" },
     { name = "tenacity", specifier = "==9.1.4" },
     { name = "timezonefinder", specifier = "==9.0.0" },
+    { name = "tzdata", specifier = "==2026.4" },
 ]
 
 [package.metadata.requires-dev]
@@ -203,7 +204,6 @@ dev = [
     { name = "pytest-django", specifier = "==4.14.0" },
     { name = "respx", specifier = "==0.23.1" },
     { name = "ruff", specifier = "==0.16.9" },
-    { name = "tzdata", specifier = "==2026.4" },
 ]
 
 [[package]]

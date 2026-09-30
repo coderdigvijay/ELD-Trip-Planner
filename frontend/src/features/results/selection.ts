@@ -1,3 +1,4 @@
+import type { HoverStore } from "./hoverStore";
 import { isoParts, dayKey } from "./time";
 import type { LogDayRef, Stop, TripTimezone } from "./types";
 
@@ -12,9 +13,8 @@ export interface SelectionProps {
   onSelectStop: (stopId: string | null) => void;
   /** Sheet (1-based `sheet_index`) of the chosen stop, so the App can switch the log tab. */
   onSelectDay?: (sheetIndex: number) => void;
-  /** Hover bonus, never required. */
-  hoveredStopId?: string | null;
-  onHoverStop?: (stopId: string | null) => void;
+  /** Hover bonus, never required. Shared by the rows and the markers (hoverStore.ts). */
+  hover?: HoverStore;
 }
 
 /** The moment a stop starts on its log sheet: pass to `DailyLogs` as `focus`. */

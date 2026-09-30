@@ -3,7 +3,6 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { LogNotice, LogSheetSkeleton } from "./LogSheetStates";
 import { EmptyLogs, LogsSection } from "./LogsSection";
 import { LogSheet } from "./LogSheet";
@@ -21,10 +20,15 @@ import { useElementWidth } from "./useElementWidth";
 import type { LogDay, LogHeader, TripTimezone } from "./types";
 import "./logs.css";
 
-/** Below this container width the sheet keeps a fixed 960 px inside a scroll region (spec 1.1). */
+/**
+ * Below this container width the sheet keeps a fixed 960 px inside a scroll region (spec 1.1). The
+ * sizing itself is a CSS container query (`@min-[900px]` on the frame, the card is the container), so
+ * the first paint is right; this JS width only decides which controls exist (Fit width, the hint, the
+ * region's role and tab stop) and where a selected stop scrolls to. Keep the three numbers in step
+ * with the `@min-[900px]`, `w-[960px]` and `max-w-[1200px]` classes below.
+ */
 const FLUID_MIN_WIDTH = 900;
 const SCROLL_SHEET_WIDTH = 960;
-const SHEET_MAX_WIDTH = 1200;
 
 export type DailyLogsState =
   | { status: "loading" }
@@ -229,7 +233,8 @@ function ReadyLogs({ days, header, sheetCount, timezone, focus }: ReadyProps) {
     <>
       <div ref={measureRef} className="print-hidden">
         <LogSheetTabs days={days} value={day.sheet_index} onValueChange={setDay} actions={actions}>
-          <LogSheetTabPanel value={day.sheet_index} className="mt-3 outline-none">
+          {/* tabIndex -1: the panel is not a tab stop. The scroll region below is the only focusable stop. */}
+          <LogSheetTabPanel value={day.sheet_index} tabIndex={-1} className="mt-3 outline-none">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <p id={summaryId} className="font-mono text-sm num">
                 {summary}
@@ -264,20 +269,12 @@ function ReadyLogs({ days, header, sheetCount, timezone, focus }: ReadyProps) {
               {...(scrollMode && !fit
                 ? { role: "region", "aria-label": "Log sheet, scroll horizontally", tabIndex: 0 }
                 : {})}
-              className={cn(
-                "mt-3 rounded-sm",
-                scrollMode &&
-                  !fit &&
-                  "touch-pan-x touch-pan-y touch-pinch-zoom overflow-x-auto overscroll-x-contain",
-              )}
+              className="mt-3 touch-pan-x touch-pan-y touch-pinch-zoom overflow-x-auto overscroll-x-contain rounded-sm"
             >
               <div
                 data-testid="sheet-frame"
-                style={
-                  fixedWidth
-                    ? { width: SCROLL_SHEET_WIDTH }
-                    : { width: "100%", maxWidth: SHEET_MAX_WIDTH }
-                }
+                data-fit={fit}
+                className="w-[960px] data-[fit=true]:w-full @min-[900px]:w-full @min-[900px]:max-w-[1200px]"
               >
                 {problems.length > 0 ? (
                   <LogNotice>

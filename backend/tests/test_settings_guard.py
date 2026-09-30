@@ -18,7 +18,12 @@ PROD_ENV = {
 
 
 def load_settings(**overrides: str | None) -> subprocess.CompletedProcess:
-    env = {"PATH": os.environ["PATH"], "DJANGO_SETTINGS_MODULE": "config.settings", **PROD_ENV}
+    env = {
+        "PATH": os.environ["PATH"],
+        "DJANGO_SETTINGS_MODULE": "config.settings",
+        "ELD_SKIP_DOTENV": "1",  # hermetic: a local backend/.env must not fill in "missing" vars
+        **PROD_ENV,
+    }
     for key, value in overrides.items():
         if value is None:
             env.pop(key, None)
@@ -51,6 +56,20 @@ def test_production_refuses_missing_required_vars(missing):
     result = load_settings(**{missing: None})
     assert result.returncode != 0
     assert missing in result.stderr
+
+
+@pytest.mark.parametrize("empty", ["DJANGO_SECRET_KEY", "ORS_API_KEY"])
+def test_production_refuses_empty_secrets(empty):
+    result = load_settings(**{empty: ""})
+    assert result.returncode != 0
+    assert empty in result.stderr
+
+
+def test_debug_true_empty_secret_key_falls_back_to_dev_key():
+    result = load_settings(
+        DJANGO_DEBUG="true", DJANGO_SECRET_KEY="", NUM_PROXIES=None, DJANGO_ALLOWED_HOSTS=None
+    )
+    assert result.returncode == 0
 
 
 def test_debug_true_is_refused_on_render():

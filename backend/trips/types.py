@@ -9,6 +9,12 @@ from typing import TypedDict
 
 from django.db.models import TextChoices
 
+# start_date window, API_CONTRACT 5.1 and 7. One definition for the serializer and plan_trip.
+START_DATE_DAYS_BACK = 30
+START_DATE_DAYS_AHEAD = 365
+_BACK, _AHEAD = START_DATE_DAYS_BACK, START_DATE_DAYS_AHEAD
+START_DATE_RANGE_MESSAGE = f"Start date must be within {_BACK} days before and {_AHEAD} days after today."
+
 
 class PlaceInput(TypedDict):
     """A place chosen from autocomplete. Text is NFC, trimmed, single line. lat/lng are floats in range

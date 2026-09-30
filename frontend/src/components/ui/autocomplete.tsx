@@ -54,7 +54,7 @@ function AutocompletePopup({
         <AutocompletePrimitive.Popup
           data-slot="autocomplete-popup"
           className={cn(
-            "w-(--anchor-width) max-w-(--available-width) rounded-md border border-rule-strong bg-popover text-popover-foreground shadow-md outline-none",
+            "w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) rounded-md border border-rule-strong bg-popover text-popover-foreground shadow-md transition-[opacity,scale] duration-160 ease-standard outline-none data-ending-style:scale-98 data-ending-style:opacity-0 data-ending-style:duration-120 data-ending-style:ease-exit data-starting-style:scale-98 data-starting-style:opacity-0",
             typeof className === "string" ? className : undefined,
           )}
           {...props}

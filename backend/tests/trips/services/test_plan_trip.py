@@ -290,7 +290,7 @@ def test_offset_is_frozen_when_the_trip_crosses_a_dst_change(ors, monkeypatch, d
     assert stamps == [(date + dt.timedelta(days=i)).isoformat() for i in range(len(stamps))]
 
 
-@pytest.mark.parametrize("days", [-1, 31])
+@pytest.mark.parametrize("days", [-31, 366])
 def test_start_date_outside_the_home_zone_window_is_a_validation_error(ors, days):
     today = plan_trip_module._utc_now().astimezone(ZoneInfo("America/New_York")).date()
     with pytest.raises(ApiError) as caught:
@@ -298,7 +298,7 @@ def test_start_date_outside_the_home_zone_window_is_a_validation_error(ors, days
     assert caught.value.code is ErrorCode.VALIDATION_ERROR and caught.value.field == "start_date"
 
 
-@pytest.mark.parametrize("days", [0, 30])
+@pytest.mark.parametrize("days", [-30, 0, 365])
 def test_start_date_window_edges_are_accepted(ors, days):
     today = plan_trip_module._utc_now().astimezone(ZoneInfo("America/New_York")).date()
     assert_invariants(short_trip(ors, date=today + dt.timedelta(days=days)))
@@ -387,6 +387,23 @@ def test_tiny_slow_leg_is_clamped_to_the_speed_floor_not_a_500(ors):
     assert_invariants(body)
 
 
+def test_slow_leg_reports_the_raw_ors_duration_but_plans_with_the_floor(ors):
+    ors.leg(RICHMOND, BALTIMORE, 100.0, 100.0)  # 1 mph: the engine floors it at 5 mph (20 h)
+    ors.leg(BALTIMORE, NEWARK, 185.4, 3.18)
+    body = plan_trip(request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE))
+    first = body["route"]["legs"][0]
+    assert first["duration_h"] == 100.0
+    assert first["planned_driving_h"] == 20.0
+
+
+def test_engine_rejection_uses_the_contract_wording(ors):
+    ors.leg(RICHMOND, BALTIMORE, 500.0, 1.0)
+    ors.leg(BALTIMORE, NEWARK, 185.4, 3.18)
+    with pytest.raises(ApiError) as caught:
+        plan_trip(request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE))
+    assert caught.value.message == "This trip is too long to plan (over 6,000 miles). Try a shorter route."
+
+
 def test_leg_over_the_engine_duration_cap_is_trip_too_long(ors):
     ors.leg(RICHMOND, BALTIMORE, 152.3, 2.62)
     ors.leg(BALTIMORE, NEWARK, 1900.0, 400.0)  # 400 h, over 14 days of driving
@@ -424,6 +441,49 @@ def test_plan_completed_line_has_metrics_and_no_locations(ors, caplog):
     text = JsonFormatter().format(record)
     for secret in ("Richmond", "Baltimore", "Newark", str(RICHMOND[0]), str(NEWARK[1])):
         assert secret not in text
+
+
+def _plan_completed(caplog):
+    return [r for r in caplog.records if r.getMessage() == "plan_completed"]
+
+
+def test_plan_completed_counts_ors_calls_and_cache_hits_by_kind(ors, caplog):
+    with caplog.at_level(logging.INFO, logger="eld.trips"):
+        short_trip(ors)
+        short_trip(ors)  # second identical plan: geocode and directions come from the caches
+    first, second = _plan_completed(caplog)
+    assert first.ors_calls["geocode"] == 1 and first.ors_calls["directions"] == 2
+    assert first.cache_hits == {}
+    assert second.ors_calls.get("geocode", 0) == 0 and second.ors_calls.get("directions", 0) == 0
+    assert second.cache_hits["geocode"] == 1 and second.cache_hits["directions"] == 2
+    for record in (first, second):
+        text = JsonFormatter().format(record)
+        for secret in ("Richmond", "Baltimore", "Newark", str(RICHMOND[0]), str(NEWARK[1]), "127.0.0.1"):
+            assert secret not in text
+
+
+@pytest.mark.parametrize(
+    ("setup", "code"),
+    [
+        ("route_not_found", "ROUTE_NOT_FOUND"),
+        ("unavailable", "UPSTREAM_UNAVAILABLE"),
+        ("location", "LOCATION_NOT_FOUND"),
+    ],
+)
+def test_plan_completed_carries_the_api_code_for_routing_errors(ors, caplog, setup, code):
+    if setup == "route_not_found":
+        ors.hgv.mock(return_value=error_response(404, 2010))
+        ors.car.mock(return_value=error_response(404, 2010))
+        trip = request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE)
+    elif setup == "unavailable":
+        ors.hgv.mock(return_value=httpx.Response(503))
+        trip = request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE)
+    else:
+        trip = request("Nowhere at all", NEWARK_PLACE, RICHMOND_PLACE)
+    with caplog.at_level(logging.INFO, logger="eld.trips"), pytest.raises(Exception):  # noqa: B017,PT011
+        plan_trip(trip)
+    (record,) = _plan_completed(caplog)
+    assert record.code == code
 
 
 def test_failed_plan_still_logs_one_plan_completed_line(ors, caplog):

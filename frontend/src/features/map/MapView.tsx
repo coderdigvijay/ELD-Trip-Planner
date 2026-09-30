@@ -22,13 +22,15 @@ import {
   Marker,
   Polyline,
   TileLayer,
-  Tooltip,
+  Tooltip as LeafletTooltip,
   useMap,
   useMapEvents,
 } from "react-leaflet";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { KIND_LABEL } from "../results/stopKinds";
+import { useIsHovered, type HoverStore } from "../results/hoverStore";
 import type { SelectionProps } from "../results/selection";
 import { formatClock } from "../results/time";
 import type { Route, Stop, StopKind, TripTimezone } from "../results/types";
@@ -42,13 +44,13 @@ import "./map.css";
 /**
  * MapView props (this module is the lazy chunk; import it through LazyMapView)
  * - route, stops, timezone: `route`, `stops`, `trip.timezone` from PlanTripResponse, unchanged.
- * - selectedStopId / onSelectStop / onSelectDay / hoveredStopId / onHoverStop: the shared
+ * - selectedStopId / onSelectStop / onSelectDay / hover: the shared
  *   SelectionProps contract (DESIGN_SYSTEM 6.5). A marker click calls onSelectStop(primaryStopId)
  *   and onSelectDay(sheetIndex is NOT known here, so the App derives it with logFocusForStop).
  * - Esc clears the selection. Keyboard: Tab to a marker, Enter or Space selects it.
  */
 export interface MapViewProps extends Partial<
-  Pick<SelectionProps, "selectedStopId" | "onSelectStop" | "hoveredStopId" | "onHoverStop">
+  Pick<SelectionProps, "selectedStopId" | "onSelectStop" | "hover">
 > {
   route: Route;
   stops: readonly Stop[];
@@ -91,14 +93,12 @@ export default function MapView({
   timezone,
   selectedStopId = null,
   onSelectStop,
-  hoveredStopId = null,
-  onHoverStop,
+  hover,
   className,
 }: MapViewProps) {
   const [map, setMap] = useState<LeafletMap | null>(null);
   const groups = useMemo(() => groupStops(stops), [stops]);
   const selectedGroupId = groupIdOf(groups, selectedStopId);
-  const hoveredGroupId = groupIdOf(groups, hoveredStopId);
   const legs = useMemo(
     () =>
       route.legs.map((leg) => ({
@@ -129,15 +129,17 @@ export default function MapView({
       className={className}
       onKeyDown={onKeyDown}
       action={
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            map?.fitBounds(boundsOf(route), FIT_OPTIONS);
-          }}
-        >
-          Fit route
-        </Button>
+        <Tooltip content="Zoom the map to the whole route">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              map?.fitBounds(boundsOf(route), FIT_OPTIONS);
+            }}
+          >
+            Fit route
+          </Button>
+        </Tooltip>
       }
       footer={
         <div className="space-y-2">
@@ -157,7 +159,7 @@ export default function MapView({
         boundsOptions={FIT_OPTIONS}
         maxZoom={MAX_ZOOM}
         scrollWheelZoom={false}
-        className="size-full"
+        className="size-full animate-reveal [animation-delay:40ms] motion-reduce:animate-none"
       >
         <TileLayer
           key={source.id}
@@ -178,9 +180,8 @@ export default function MapView({
             group={group}
             timezone={timezone}
             selected={group.id === selectedGroupId}
-            hovered={group.id === hoveredGroupId}
+            hover={hover}
             onPick={pick}
-            onHover={onHoverStop}
           />
         ))}
         <MapBehavior
@@ -225,6 +226,8 @@ function useTileFallback() {
 
 function RouteLeg({ positions, dashed }: { positions: LatLngTuple[]; dashed: boolean }) {
   // Pattern, not color, separates the legs. Dashes use butt caps so the gaps stay visible.
+  // Options are direct props: react-leaflet applies `pathOptions` with setStyle after construction,
+  // which never sets `className`, so className there is silently dropped.
   const shared = {
     lineCap: dashed ? ("butt" as const) : ("round" as const),
     lineJoin: "round" as const,
@@ -234,14 +237,8 @@ function RouteLeg({ positions, dashed }: { positions: LatLngTuple[]; dashed: boo
   };
   return (
     <>
-      <Polyline
-        positions={positions}
-        pathOptions={{ ...shared, className: "route-casing", weight: 7 }}
-      />
-      <Polyline
-        positions={positions}
-        pathOptions={{ ...shared, className: "route-line", weight: 4 }}
-      />
+      <Polyline positions={positions} {...shared} className="route-casing" weight={7} />
+      <Polyline positions={positions} {...shared} className="route-line" weight={4} />
     </>
   );
 }
@@ -250,13 +247,14 @@ interface StopMarkerProps {
   group: MarkerGroup;
   timezone: TripTimezone;
   selected: boolean;
-  hovered: boolean;
+  hover: HoverStore | undefined;
   onPick: (group: MarkerGroup) => void;
-  onHover?: (stopId: string | null) => void;
 }
 
-function StopMarker({ group, timezone, selected, hovered, onPick, onHover }: StopMarkerProps) {
+function StopMarker({ group, timezone, selected, hover, onPick }: StopMarkerProps) {
   const markerRef = useRef<LeafletMarker>(null);
+  const stopIds = useMemo(() => group.stops.map((s) => s.id), [group.stops]);
+  const hovered = useIsHovered(hover, stopIds);
   const extra = group.stops.length - 1;
   const icon = useMemo(() => markerIcon(group.primary.kind, extra), [group.primary.kind, extra]);
   const name = group.stops
@@ -268,10 +266,10 @@ function StopMarker({ group, timezone, selected, hovered, onPick, onHover }: Sto
       click: () => {
         onPick(group);
       },
-      mouseover: () => onHover?.(group.id),
-      mouseout: () => onHover?.(null),
+      mouseover: () => hover?.set(group.primary.id),
+      mouseout: () => hover?.set(null),
     }),
-    [group, onPick, onHover],
+    [group, onPick, hover],
   );
 
   // Name, pressed state and the selected/hover classes go on Leaflet's own icon element, so focus never moves.
@@ -327,7 +325,7 @@ function StopMarker({ group, timezone, selected, hovered, onPick, onHover }: Sto
       zIndexOffset={selected ? 1000 : 0}
       eventHandlers={eventHandlers}
     >
-      <Tooltip direction="top" offset={[0, -14]} className="stop-tooltip">
+      <LeafletTooltip direction="top" offset={[0, -14]} className="stop-tooltip">
         <ul className="m-0 list-none space-y-1 p-0">
           {group.stops.map((s) => (
             <li key={s.id}>
@@ -339,7 +337,7 @@ function StopMarker({ group, timezone, selected, hovered, onPick, onHover }: Sto
             </li>
           ))}
         </ul>
-      </Tooltip>
+      </LeafletTooltip>
     </Marker>
   );
 }

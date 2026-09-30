@@ -23,10 +23,7 @@ const MapView = lazy(prefetchMapView);
 export type MapPanelState = PanelState<Pick<MapViewProps, "route" | "stops" | "timezone">>;
 
 export interface LazyMapViewProps extends Partial<
-  Pick<
-    MapViewProps,
-    "selectedStopId" | "onSelectStop" | "hoveredStopId" | "onHoverStop" | "className"
-  >
+  Pick<MapViewProps, "selectedStopId" | "onSelectStop" | "hover" | "className">
 > {
   state: MapPanelState;
 }

@@ -95,6 +95,29 @@
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* class ease-exit: leave */
   --default-transition-duration: 120ms; /* every transition-* class without duration-* */
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+
+  /* DESIGN_SYSTEM 2.7: results reveal (once per plan) and the skeleton pulse. Reduced motion is
+     handled by the global rule in @layer base and by motion-reduce:animate-none on the users. */
+  --animate-reveal: reveal 160ms var(--ease-standard) both;
+  --animate-skeleton: skeleton-pulse 1.2s ease-in-out infinite alternate;
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes skeleton-pulse {
+    from {
+      opacity: 0.6;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
 /* shadcn variable names, pointing at our tokens. Components and the CLI read these. */
@@ -186,4 +209,42 @@
 }
 @utility num {
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Log sheet tokens (LOG_SHEET_RENDER_SPEC 1.2, DESIGN_SYSTEM 7.2). Units are SVG user units on the
+   0 0 1000 1020 viewBox; stroke weights of the form group are CSS px. SVG attributes cannot use var(), so
+   features/logs/tokens.ts holds the literals and a unit test asserts they equal this block. */
+:root {
+  --log-paper: var(--color-surface);
+  --log-ink: var(--color-ink);
+  --log-pen: var(--color-pen);
+
+  --log-frame-w: 1.5;
+  --log-hour-w: 1;
+  --log-half-w: 0.75;
+  --log-half-len: 0.5; /* of row height */
+  --log-quarter-w: 0.75; /* 0.5 drops to 0 device px at DPR 1 */
+  --log-quarter-len: 0.3; /* of row height */
+  --log-rule-w: 0.75;
+  --log-heavy-w: 2.5;
+  --log-status-w: 2.5;
+  --log-status-cap: square;
+  --log-status-join: miter;
+  --log-bracket-w: 1;
+  --log-bracket-tick: 6;
+
+  --log-label-font: var(--font-sans);
+  --log-label-size: 11;
+  --log-title-size: 28;
+  --log-hour-font: var(--font-sans);
+  --log-hour-size: 10.5;
+  --log-entry-font: var(--font-mono);
+  --log-entry-size-lg: 18;
+  --log-entry-size: 15;
+  --log-entry-size-sm: 13;
+  --log-remark-font: var(--font-mono);
+  --log-remark-size: 11;
+  --log-remark-weight: 500;
+  --log-remark-rotate: 45;
+  --log-text-min: 10;
 }

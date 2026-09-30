@@ -13,7 +13,7 @@ const COPY: Record<string, WarningCopy> = {
     body: "No truck route was found, so the distance and drive time come from a car route. A truck may need more time or a different road.",
   },
   LABELS_APPROXIMATED: {
-    title: "Some place names are approximate",
+    title: "Some stop locations are approximate",
     body: 'Stops and log remarks may read "near City, ST" or show coordinates, because place lookups were limited or unavailable.',
   },
   CYCLE_RESTART_AT_START: {
@@ -29,4 +29,12 @@ export function warningCopy(warning: TripWarning): WarningCopy {
       body: warning.message,
     }
   );
+}
+
+export const CAR_PROFILE_USED = "CAR_PROFILE_USED";
+/** Shown as one line under the Stops heading, not in the Summary (DESIGN_SYSTEM 4.5 f). */
+export const LABELS_APPROXIMATED = "LABELS_APPROXIMATED";
+
+export function hasWarning(warnings: readonly TripWarning[], code: string): boolean {
+  return warnings.some((warning) => warning.code === code);
 }

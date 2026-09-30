@@ -125,6 +125,54 @@ describe("validation", () => {
     ).toBeInTheDocument();
   });
 
+  it("flags a comma decimal and blocks submit instead of reading 23,5 as 235 and clamping", async () => {
+    const { user } = setup();
+    let posts = 0;
+    server.use(
+      http.post("*/api/v1/trips/plan", () => {
+        posts += 1;
+        return HttpResponse.json(planOk);
+      }),
+    );
+    await fillFreeText(user);
+    const cycle = screen.getByRole("textbox", { name: "Cycle used (last 8 days)" });
+    await user.clear(cycle);
+    await user.type(cycle, "23,5");
+    expect(await screen.findByText("Use a period for decimals, like 23.5.")).toBeInTheDocument();
+    expect(cycle).toBeInvalid();
+    await user.tab();
+    expect(cycle).toHaveValue("23,5");
+    await user.click(screen.getByRole("button", { name: "Plan trip" }));
+    expect(cycle).toHaveFocus();
+    expect(posts).toBe(0);
+    await user.clear(cycle);
+    await user.type(cycle, "23.5");
+    expect(cycle).toHaveValue("23.5");
+    expect(screen.queryByText("Use a period for decimals, like 23.5.")).not.toBeInTheDocument();
+  });
+
+  it("flags a pasted comma decimal too", async () => {
+    const { user } = setup();
+    const cycle = screen.getByRole("textbox", { name: "Cycle used (last 8 days)" });
+    await user.clear(cycle);
+    await user.click(cycle);
+    await user.paste("23,5");
+    expect(await screen.findByText("Use a period for decimals, like 23.5.")).toBeInTheDocument();
+  });
+
+  it("names each field without its decorative step number", () => {
+    setup();
+    expect(screen.getByRole("combobox", { name: "Current location" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Pickup" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Dropoff" })).toBeInTheDocument();
+  });
+
+  it("says what is needed when an empty location field gains focus", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("combobox", { name: "Current location" }));
+    expect(await screen.findByText("Type 3 or more characters")).toBeInTheDocument();
+  });
+
   it("opens the optional section to show an error inside it", async () => {
     const { user } = setup();
     await fillFreeText(user);
@@ -277,6 +325,10 @@ describe("submit", () => {
     const input = screen.getByLabelText(/Current location/);
     expect(input).toHaveAttribute("readonly");
     expect(input).not.toBeDisabled();
+    await user.click(screen.getByText("Start time and log details (optional)"));
+    const time = screen.getByRole("combobox", { name: /Start time/ });
+    expect(time).toHaveAttribute("aria-readonly", "true");
+    expect(time).not.toBeDisabled();
     await waitFor(() => {
       expect(screen.getByTestId("plan")).toHaveTextContent("planned");
     });

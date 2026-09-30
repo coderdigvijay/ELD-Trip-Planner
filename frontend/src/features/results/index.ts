@@ -7,3 +7,6 @@ export { StopGlyph } from "./StopGlyph";
 export { logFocusForStop } from "./selection";
 export type { SelectionProps, StopLogFocus } from "./selection";
 export type { PanelState } from "./types";
+export { createHoverStore } from "./hoverStore";
+export type { HoverStore } from "./hoverStore";
+export { hasWarning, LABELS_APPROXIMATED, CAR_PROFILE_USED } from "./warnings";

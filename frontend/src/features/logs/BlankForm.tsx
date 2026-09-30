@@ -2,21 +2,29 @@ import type { ReactElement } from "react";
 
 import { HOUR_PATH, TICK_PATH, x } from "./geometry";
 import {
+  BAND_LINE1_Y,
+  BAND_LINE2_Y,
+  BAND_TOTAL_X,
   BAND_Y0,
   BAND_Y1,
+  COPY_NOTE_X,
+  COPY_NOTE_Y,
+  FORM_BOXES,
+  FORM_H_RULES,
   FRAME_W,
   GRID_X0,
   GRID_X1,
   GRID_Y1,
   HEAVY_W,
   HOUR_W,
-  ROW_TOP,
-  RULE_W,
+  MIDNIGHT_END_X,
+  MIDNIGHT_START_X,
+  REMARKS_LEFT_RULE,
+  ROW_RULES,
   TICK_W,
-  TOTAL_X0,
   TOTAL_X1,
 } from "./layout";
-import { FONT_SANS, INK, SURFACE } from "./tokens";
+import { FONT_SANS, HOUR_SIZE, INK, SURFACE, TITLE_SIZE } from "./tokens";
 
 // The static printed form (LOG_SHEET_RENDER_SPEC 2.1 to 2.7, printed parts only). Module-level constant
 // element: React never re-diffs it. Lines are non-scaling so hairlines stay crisp at any render size.
@@ -33,55 +41,6 @@ interface PrintedText {
   anchor?: Anchor;
   fill?: string;
 }
-
-/** [x1, x2, y, width] */
-type HRule = readonly [number, number, number, number];
-
-const H_RULES: readonly HRule[] = [
-  // Date fields
-  [330, 400, 40, RULE_W],
-  [420, 492, 40, RULE_W],
-  [512, 580, 40, RULE_W],
-  // From / To
-  [110, 480, 88, RULE_W],
-  [540, 944, 88, RULE_W],
-  // Driver, carrier, main office, home terminal
-  [456, 944, 112, RULE_W],
-  [456, 944, 152, RULE_W],
-  [456, 944, 194, RULE_W],
-  [456, 944, 236, RULE_W],
-  // Row rules and total hours column
-  [GRID_X0, GRID_X1, ROW_TOP.sleeper, FRAME_W],
-  [GRID_X0, GRID_X1, ROW_TOP.driving, FRAME_W],
-  [GRID_X0, GRID_X1, ROW_TOP.on_duty, FRAME_W],
-  [TOTAL_X0, TOTAL_X1, ROW_TOP.sleeper, HOUR_W],
-  [TOTAL_X0, TOTAL_X1, ROW_TOP.driving, HOUR_W],
-  [TOTAL_X0, TOTAL_X1, ROW_TOP.on_duty, HOUR_W],
-  [TOTAL_X0, TOTAL_X1, GRID_Y1, HOUR_W],
-  [TOTAL_X0, TOTAL_X1, 504, HOUR_W],
-  [TOTAL_X0, TOTAL_X1, 508, HOUR_W],
-  // Remarks: heavy bottom rules
-  [40, 364, 812, HEAVY_W],
-  [628, 944, 812, HEAVY_W],
-  // Shipping documents
-  [44, 200, 676, RULE_W],
-  [44, 200, 736, RULE_W],
-  // Recap fill lines (values are written above them)
-  [144, 208, 884, RULE_W],
-  [300, 362, 884, RULE_W],
-  [380, 442, 884, RULE_W],
-  [460, 522, 884, RULE_W],
-  [620, 682, 884, RULE_W],
-  [700, 762, 884, RULE_W],
-  [780, 842, 884, RULE_W],
-  [40, 944, 988, HEAVY_W],
-];
-
-const BOXES: readonly (readonly [number, number, number, number])[] = [
-  [108, 128, 164, 44],
-  [280, 128, 154, 44],
-  [108, 198, 326, 42],
-];
 
 const recapBody = (x0: number, lines: readonly string[]): PrintedText[] =>
   lines.map((t, i) => ({ x: x0, y: 898 + i * 14, t }));
@@ -113,7 +72,7 @@ const RECAP_C = (n: number) => [
 ];
 
 const TEXTS: readonly PrintedText[] = [
-  { x: 44, y: 38, t: "Drivers Daily Log", size: 28, bold: true },
+  { x: 44, y: 38, t: "Drivers Daily Log", size: TITLE_SIZE, bold: true },
   { x: 118, y: 58, t: "(24 hours)", size: 11, anchor: "middle" },
   { x: 365, y: 56, t: "(month)", anchor: "middle" },
   { x: 456, y: 56, t: "(day)", anchor: "middle" },
@@ -131,13 +90,13 @@ const TEXTS: readonly PrintedText[] = [
   { x: 700, y: 208, t: "Main Office Address", bold: true, anchor: "middle" },
   { x: 700, y: 250, t: "Home Terminal Address", bold: true, anchor: "middle" },
   // Hour band
-  { x: 126, y: 316, t: "Mid-", fill: SURFACE },
-  { x: 126, y: 330, t: "night", fill: SURFACE },
-  { x: 891, y: 316, t: "Mid-", fill: SURFACE, anchor: "end" },
-  { x: 891, y: 330, t: "night", fill: SURFACE, anchor: "end" },
-  { x: 930, y: 316, t: "Total", fill: SURFACE, anchor: "middle" },
-  { x: 930, y: 330, t: "Hours", fill: SURFACE, anchor: "middle" },
-  { x: x(720), y: 330, t: "Noon", size: 10.5, bold: true, fill: SURFACE, anchor: "middle" },
+  { x: MIDNIGHT_START_X, y: BAND_LINE1_Y, t: "Mid-", fill: SURFACE },
+  { x: MIDNIGHT_START_X, y: BAND_LINE2_Y, t: "night", fill: SURFACE },
+  { x: MIDNIGHT_END_X, y: BAND_LINE1_Y, t: "Mid-", fill: SURFACE, anchor: "end" },
+  { x: MIDNIGHT_END_X, y: BAND_LINE2_Y, t: "night", fill: SURFACE, anchor: "end" },
+  { x: BAND_TOTAL_X, y: BAND_LINE1_Y, t: "Total", fill: SURFACE, anchor: "middle" },
+  { x: BAND_TOTAL_X, y: BAND_LINE2_Y, t: "Hours", fill: SURFACE, anchor: "middle" },
+  { x: x(720), y: 330, t: "Noon", size: HOUR_SIZE, bold: true, fill: SURFACE, anchor: "middle" },
   ...Array.from({ length: 23 }, (_, i): PrintedText[] => {
     const h = i + 1;
     return h === 12
@@ -147,7 +106,7 @@ const TEXTS: readonly PrintedText[] = [
             x: x(h * 60),
             y: 330,
             t: String(h > 12 ? h - 12 : h),
-            size: 10.5,
+            size: HOUR_SIZE,
             bold: true,
             fill: SURFACE,
             anchor: "middle",
@@ -225,10 +184,10 @@ const inkTexts = TEXTS.filter((t) => t.fill !== SURFACE);
 export const BLANK_FORM: ReactElement = (
   <g data-part="blank-form" fontFamily={FONT_SANS}>
     <g stroke={INK} fill="none">
-      {H_RULES.map(([x1, x2, yy, w]) => (
+      {FORM_H_RULES.map(([x1, x2, yy, w]) => (
         <line key={`${x1}-${x2}-${yy}`} x1={x1} x2={x2} y1={yy} y2={yy} strokeWidth={w} {...NS} />
       ))}
-      {BOXES.map(([bx, by, bw, bh]) => (
+      {FORM_BOXES.map(([bx, by, bw, bh]) => (
         <rect
           key={`${bx}-${by}`}
           x={bx}
@@ -239,14 +198,21 @@ export const BLANK_FORM: ReactElement = (
           {...NS}
         />
       ))}
-      <line x1={40} x2={40} y1={544} y2={812} strokeWidth={HEAVY_W} {...NS} />
+      <line
+        x1={REMARKS_LEFT_RULE[0]}
+        x2={REMARKS_LEFT_RULE[0]}
+        y1={REMARKS_LEFT_RULE[1]}
+        y2={REMARKS_LEFT_RULE[2]}
+        strokeWidth={HEAVY_W}
+        {...NS}
+      />
     </g>
     {inkTexts.map((t, i) => renderText(t, i))}
-    <text x={600} y={32} fontSize={10} fill={INK} xmlSpace="preserve">
+    <text x={COPY_NOTE_X} y={COPY_NOTE_Y[0]} fontSize={10} fill={INK} xmlSpace="preserve">
       <tspan fontWeight={600}>Original</tspan>
       <tspan fontWeight={400}> - File at home terminal.</tspan>
     </text>
-    <text x={600} y={50} fontSize={10} fill={INK} xmlSpace="preserve">
+    <text x={COPY_NOTE_X} y={COPY_NOTE_Y[1]} fontSize={10} fill={INK} xmlSpace="preserve">
       <tspan fontWeight={600}>Duplicate</tspan>
       <tspan fontWeight={400}> - Driver retains in his/her possession for 8 days.</tspan>
     </text>
@@ -267,6 +233,9 @@ export const BLANK_FORM: ReactElement = (
         strokeWidth={FRAME_W}
         {...NS}
       />
+      {ROW_RULES.map(([x1, x2, yy, w]) => (
+        <line key={yy} x1={x1} x2={x2} y1={yy} y2={yy} strokeWidth={w} {...NS} />
+      ))}
       <path d={HOUR_PATH} strokeWidth={HOUR_W} {...NS} />
       <path d={TICK_PATH} strokeWidth={TICK_W} {...NS} />
     </g>

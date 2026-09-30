@@ -2,11 +2,12 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { LogFocus } from "@/features/logs";
 import { LogSheetSkeleton } from "@/features/logs/LogSheetStates";
 import { EmptyLogs, LogsSection } from "@/features/logs/LogsSection";
 import { prefetchMapView } from "@/features/map";
+import { StopsFallback } from "@/features/results/StopsFrame";
+import { SummaryFallback } from "@/features/results/SummarySkeleton";
 import { MapSkeleton } from "@/features/map/MapSkeleton";
 import {
   EmptyGuidance,
@@ -22,6 +23,7 @@ import {
   type PlanFailure,
   type TripFormValues,
 } from "@/features/trip-form";
+import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 
 const PHONE = "(max-width: 47.99rem)";
@@ -41,32 +43,24 @@ function prefetchResults(): void {
 function ResultsFallback() {
   return (
     <>
-      <section
-        aria-busy="true"
-        className="min-h-40 rounded-md border border-rule bg-surface p-4 md:p-5"
-      >
-        <h2 className="label-caps">Summary</h2>
-        <div role="status" className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-5">
-          <span className="sr-only">Loading results</span>
-          {Array.from({ length: 5 }, (_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      </section>
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <SummaryFallback />
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
         <MapSkeleton />
-        <Skeleton className="h-64 w-full" />
+        <StopsFallback />
       </div>
     </>
   );
 }
 
-/** True while the form differs from the inputs of the plan on screen (DESIGN_SYSTEM 4.4). */
+/**
+ * True while the form differs from the inputs of the plan on screen (DESIGN_SYSTEM 4.4). The flag is
+ * remembered per baseline, so a new plan (a new `submitted`) starts clean without resetting state.
+ */
 function useInputsChanged(
   api: ReturnType<typeof useTripForm>,
   submitted: TripFormValues | null,
 ): boolean {
-  const [changed, setChanged] = useState(false);
+  const [changedFrom, setChangedFrom] = useState<string | null>(null);
   const { form } = api;
   useEffect(() => {
     if (!submitted) return;
@@ -74,14 +68,19 @@ function useInputsChanged(
     return form.subscribe({
       formState: { values: true },
       callback: ({ values }) => {
-        setChanged(JSON.stringify(values) !== baseline);
+        setChangedFrom(JSON.stringify(values) !== baseline ? baseline : null);
       },
     });
   }, [form, submitted]);
-  return submitted !== null && changed;
+  return submitted !== null && changedFrom === JSON.stringify(submitted);
 }
 
-export function Workspace() {
+export interface WorkspaceProps {
+  /** Called when results appear or go away, so the header can offer Print logs on phones. */
+  onResultsChange?: (hasResults: boolean) => void;
+}
+
+export function Workspace({ onResultsChange }: WorkspaceProps) {
   const api = useTripForm();
   const { focusField, applyProblems, fillExample } = api;
   const health = useServerHealth();
@@ -156,6 +155,13 @@ export function Workspace() {
 
   const alert = planner.failure?.kind === "alert" ? planner.failure : null;
   const showEmpty = !planner.isPending && !plan && !planner.lastPlan;
+  const hasResults = plan !== null;
+  useEffect(() => {
+    onResultsChange?.(hasResults);
+    return () => {
+      onResultsChange?.(false);
+    };
+  }, [hasResults, onResultsChange]);
 
   return (
     <>
@@ -268,7 +274,12 @@ export function Workspace() {
           ) : null}
         </section>
 
-        <div className="min-w-0 lg:col-span-2">
+        <div
+          className={cn(
+            "min-w-0 lg:col-span-2",
+            plan && "animate-reveal [animation-delay:80ms] motion-reduce:animate-none",
+          )}
+        >
           {showEmpty ? (
             <LogsSection>
               <EmptyLogs />

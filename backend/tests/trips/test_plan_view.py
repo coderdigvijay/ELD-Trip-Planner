@@ -44,7 +44,7 @@ def _error_of(client, exc, **overrides):
             "dropoff_location",
             None,
         ),
-        (re_.RouteNotFound(), 422, "ROUTE_NOT_FOUND", None, None),
+        (re_.RouteNotFound("A", "B"), 422, "ROUTE_NOT_FOUND", None, None),
         (re_.TripTooLong(), 422, "TRIP_TOO_LONG", None, None),
         (re_.UpstreamRateLimited(retry_after_s=42), 503, "UPSTREAM_QUOTA_EXCEEDED", None, 42),
         (re_.UpstreamRateLimited(retry_after_s=9999), 503, "UPSTREAM_QUOTA_EXCEEDED", None, 300),
@@ -160,3 +160,16 @@ def test_options_preflight_is_answered_by_cors_not_the_body_check(client):
     )
     assert response.status_code == 200
     assert response["Access-Control-Allow-Origin"] == "http://localhost:5173"
+
+
+def test_route_not_found_message_names_both_places(client):
+    _, error = _error_of(client, re_.RouteNotFound("Richmond, VA", "Baltimore, MD"))
+    assert error["message"] == (
+        "We couldn't find a drivable route between Richmond, VA and Baltimore, MD. "
+        "Try a nearby city or a street address."
+    )
+
+
+def test_trip_too_long_uses_contract_wording(client):
+    _, error = _error_of(client, re_.TripTooLong())
+    assert error["message"] == "This trip is too long to plan (over 6,000 miles). Try a shorter route."

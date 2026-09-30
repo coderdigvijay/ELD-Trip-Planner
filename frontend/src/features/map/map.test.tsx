@@ -46,15 +46,21 @@ vi.mock("react-leaflet", () => ({
   ),
   Polyline: ({
     positions,
-    pathOptions,
+    className,
+    dashArray,
+    weight,
   }: {
     positions: number[][];
-    pathOptions: { className: string; dashArray?: string };
+    className: string;
+    dashArray?: string;
+    weight: number;
   }) => (
+    // Direct props, as react-leaflet only applies className/weight at construction.
     <div
-      data-testid={`path-${pathOptions.className}`}
+      data-testid={`path-${className}`}
       data-points={positions.length}
-      data-dash={pathOptions.dashArray ?? ""}
+      data-dash={dashArray ?? ""}
+      data-weight={weight}
     />
   ),
   Marker: ({
@@ -134,6 +140,11 @@ describe("MapView", () => {
     expect(lines.map((l) => l.dataset.points)).toEqual(["3", "5"]);
     expect(lines.map((l) => l.dataset.dash)).toEqual(["8 6", ""]);
     expect(screen.getAllByTestId("path-route-casing")).toHaveLength(2);
+    expect(lines.map((l) => l.dataset.weight)).toEqual(["4", "4"]);
+    expect(screen.getAllByTestId("path-route-casing").map((l) => l.dataset.weight)).toEqual([
+      "7",
+      "7",
+    ]);
     expect(screen.getByTestId("tiles")).toHaveTextContent(
       "Routing © openrouteservice.org by HeiGIT",
     );

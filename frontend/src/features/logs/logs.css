@@ -22,8 +22,16 @@
   details {
     display: none !important;
   }
+  /* The sheets are portaled to <body> (PrintAllLogs): hide the whole app so no card border, padding
+     or shell gutter prints, and every page is just the sheet at the printable width (7.7 in). */
+  body:has(> .log-print-only) > #root {
+    display: none !important;
+  }
   .log-print-only {
     display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
   .log-sheet-page {
     break-inside: avoid;

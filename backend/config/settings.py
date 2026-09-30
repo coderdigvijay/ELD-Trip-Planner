@@ -14,7 +14,10 @@ from config.logging import build_logging_config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
-environ.Env.read_env(BASE_DIR / ".env")  # no-op when the file is absent (Render, CI)
+# No-op when the file is absent (Render, CI). ELD_SKIP_DOTENV is set only by the test suite so a
+# developer's local .env can never change what the tests see.
+if not env.bool("ELD_SKIP_DOTENV", default=False):
+    environ.Env.read_env(BASE_DIR / ".env")
 
 # --- Mode -------------------------------------------------------------------------------------
 
@@ -27,15 +30,25 @@ if DEBUG and env.str("RENDER", default=""):
 
 # --- Secrets and required config (fail fast in production) --------------------------------------
 
+
+def _required(name: str) -> str:
+    """A required secret: missing (KeyError-style) or empty both refuse to boot."""
+    value = env.str(name)
+    if not value.strip():
+        raise ImproperlyConfigured(f"{name} must not be empty in production.")
+    return value
+
+
 if PRODUCTION:
-    SECRET_KEY = env.str("DJANGO_SECRET_KEY")
-    ORS_API_KEY = env.str("ORS_API_KEY")  # server side only; never logged or returned
+    SECRET_KEY = _required("DJANGO_SECRET_KEY")
+    ORS_API_KEY = _required("ORS_API_KEY")  # server side only; never logged or returned
     ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
     NUM_PROXIES = env.int("NUM_PROXIES")
     if NUM_PROXIES < 1:
         raise ImproperlyConfigured("NUM_PROXIES must be an integer >= 1 in production.")
 else:
-    SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="insecure-dev-only-key")
+    # `or`: an empty var in a dev .env must not leave Django without a key (it 500s every error page).
+    SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="") or "insecure-dev-only-key"
     ORS_API_KEY = env.str("ORS_API_KEY", default="")
     ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[::1]"])
     NUM_PROXIES = env.int("NUM_PROXIES", default=0)
@@ -61,6 +74,9 @@ MIDDLEWARE = [
     "trips.middleware.RequestContextMiddleware",  # first: every later layer and handler sees the id
     # Second: wraps CORS preflights and DisallowedHost 400s, which inner layers answer directly.
     "trips.middleware.ResponseHeadersMiddleware",
+    # Inside the headers layer: compression only touches the body, and Cache-Control/CSP are then set
+    # on the final response either way. Also covers error bodies. No secrets in bodies (BREACH n/a).
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",

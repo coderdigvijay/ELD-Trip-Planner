@@ -12,10 +12,10 @@ export interface AssumptionsDialogProps {
 export function AssumptionsDialog({ assumptions }: AssumptionsDialogProps) {
   return (
     <Dialog.Root>
-      <Dialog.Trigger render={<Button variant="secondary" size="sm" />}>Assumptions</Dialog.Trigger>
+      <Dialog.Trigger render={<Button variant="ghost" size="sm" />}>Assumptions</Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 bg-ink/40" />
-        <Dialog.Popup className="fixed start-1/2 top-1/2 flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-md border border-rule bg-surface p-4 shadow-lg outline-none md:p-5">
+        <Dialog.Backdrop className="fixed inset-0 bg-ink/40 transition-opacity duration-160 ease-standard data-ending-style:opacity-0 data-ending-style:duration-120 data-ending-style:ease-exit data-starting-style:opacity-0" />
+        <Dialog.Popup className="fixed start-1/2 top-1/2 flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-140 -translate-x-1/2 -translate-y-1/2 flex-col rounded-md border border-rule bg-surface p-4 shadow-lg transition-[opacity,scale] duration-160 ease-standard outline-none data-ending-style:scale-98 data-ending-style:opacity-0 data-ending-style:duration-120 data-ending-style:ease-exit data-starting-style:scale-98 data-starting-style:opacity-0 md:p-5">
           <div className="flex items-start justify-between gap-3">
             <Dialog.Title className="text-xl font-semibold">Assumptions</Dialog.Title>
             <Dialog.Close

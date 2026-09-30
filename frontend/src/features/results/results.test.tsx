@@ -1,8 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { days, LONG_LABEL, must, plan, stops, timeline } from "./__fixtures__/multiDayTrip";
+import { createHoverStore } from "./hoverStore";
 import { logFocusForStop } from "./selection";
 import { StopTimeline, type StopTimelineState } from "./StopTimeline";
 import { formatClock, formatDuration, formatSpan } from "./time";
@@ -80,11 +81,10 @@ describe("StopTimeline", () => {
     expect(within(released).getByText("Off duty")).toBeInTheDocument();
   });
 
-  it("keeps a long place name whole for assistive tech and in the title, clamped visually", () => {
+  it("keeps a long place name whole for assistive tech, clamped visually", () => {
     render(<StopTimeline state={readyTimeline} />);
     const row = screen.getByRole("button", { name: new RegExp(LONG_LABEL.slice(0, 30)) });
     expect(row).toHaveAccessibleName(expect.stringContaining(LONG_LABEL));
-    expect(row).toHaveAttribute("title", `10-hr rest, ${LONG_LABEL}`);
     expect(row.querySelector(".line-clamp-2")?.textContent).toContain(LONG_LABEL);
   });
 
@@ -154,6 +154,58 @@ describe("StopTimeline", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("bounds the card from lg and makes the list a labelled, focusable scroll region", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      render(<StopTimeline state={readyTimeline} />);
+      const stopsCard = screen.getByRole("region", { name: "Stops" });
+      expect(stopsCard).toHaveClass("lg:h-120", "xl:h-100");
+      const scroller = screen.getByRole("region", { name: "Trip timeline" });
+      expect(scroller).toHaveAttribute("tabindex", "0");
+      expect(scroller).toHaveClass("lg:overflow-y-auto");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not add a tab stop below lg, where the list flows in the page", () => {
+    render(<StopTimeline state={readyTimeline} />);
+    expect(screen.queryByRole("region", { name: "Trip timeline" })).not.toBeInTheDocument();
+  });
+
+  it("says approximate locations once under the heading when the plan warns", () => {
+    const { rerender } = render(<StopTimeline state={readyTimeline} />);
+    expect(screen.queryByText("Some stop locations are approximate.")).not.toBeInTheDocument();
+    rerender(<StopTimeline state={{ ...readyTimeline, approximate: true }} />);
+    expect(screen.getByText("Some stop locations are approximate.")).toBeInTheDocument();
+  });
+
+  it("highlights a row while the shared hover store names its stop, and only that row", () => {
+    const hover = createHoverStore();
+    render(<StopTimeline state={readyTimeline} hover={hover} />);
+    const first = must(stops[0]);
+    const row = screen.getByRole("button", {
+      name: new RegExp(`^${first.arrive_at.slice(11, 16)}`),
+    });
+    expect(row).not.toHaveClass("bg-surface-sunk");
+    act(() => {
+      hover.set(first.id);
+    });
+    expect(row).toHaveClass("bg-surface-sunk");
+    expect(
+      screen.getAllByRole("button").filter((b) => b.classList.contains("bg-surface-sunk")),
+    ).toHaveLength(1);
+    act(() => {
+      hover.set(null);
+    });
+    expect(row).not.toHaveClass("bg-surface-sunk");
+  });
+
   it("handles 60+ rows without dropping any", () => {
     const many = Array.from({ length: 64 }, (_, i) => ({
       ...must(stops[3]),
@@ -199,7 +251,9 @@ describe("TripSummary", () => {
     ];
     render(<TripSummary state={{ ...ready, trip: { ...plan.trip, warnings } }} />);
     expect(screen.getByText("Car route used")).toBeInTheDocument();
-    expect(screen.getByText("Some place names are approximate")).toBeInTheDocument();
+    expect(screen.getByText("Car route")).toBeInTheDocument();
+    // LABELS_APPROXIMATED lives under the Stops heading, not in the Summary.
+    expect(screen.queryByText("Some stop locations are approximate")).not.toBeInTheDocument();
     expect(screen.getByText("The trip starts with a 34-hour restart")).toBeInTheDocument();
     expect(screen.getByText("The server said this.")).toBeInTheDocument();
     expect(screen.queryByText("raw")).not.toBeInTheDocument();

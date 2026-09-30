@@ -1,9 +1,12 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { TriangleAlert } from "lucide-react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { useIsHovered, type HoverStore } from "./hoverStore";
 import { StopGlyph } from "./StopGlyph";
+import { StopsFrame, StopsSkeletonRows } from "./StopsFrame";
 import { KIND_LABEL, STATUS_CODE, STATUS_NAME } from "./stopKinds";
 import { buildDayGroups, type TimelineRow } from "./timelineModel";
 import type { SelectionProps } from "./selection";
@@ -26,7 +29,8 @@ import type {
  *   optional onSelectDay(sheetIndex), optional hoveredStopId / onHoverStop.
  *   Click or Enter on a row selects it; Escape clears; the selected row scrolls into view inside
  *   this panel only (the page never scrolls).
- * - className: extra classes for the card. The card grows to its content, so no row is ever clipped.
+ * - className: extra classes for the card. From lg the card has a fixed height (DESIGN_SYSTEM 3.6) and
+ *   the list scrolls inside it as a labelled, focusable region, so every row stays reachable.
  */
 export type StopTimelineState = PanelState<{
   stops: readonly Stop[];
@@ -34,6 +38,8 @@ export type StopTimelineState = PanelState<{
   days: readonly LogDayRef[];
   timezone: TripTimezone;
   counts: TripSummaryData["counts"];
+  /** `LABELS_APPROXIMATED` is in trip.warnings: say so under the heading. */
+  approximate?: boolean;
 }>;
 
 export interface StopTimelineProps extends Partial<SelectionProps> {
@@ -41,40 +47,19 @@ export interface StopTimelineProps extends Partial<SelectionProps> {
   className?: string;
 }
 
-const SKELETON_ROWS = 8;
+const BOUNDED_PANEL = "(min-width: 64rem)";
 
 export function StopTimeline({ state, className, ...selection }: StopTimelineProps) {
-  const headingId = useId();
   if (state.status === "empty" || state.status === "error") return null;
 
   return (
-    <section
-      aria-labelledby={headingId}
-      aria-busy={state.status === "loading"}
-      className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-md border border-rule bg-surface p-4 md:p-5",
-        className,
-      )}
-    >
-      <h2 id={headingId} className="label-caps">
-        Stops
-      </h2>
+    <StopsFrame busy={state.status === "loading"} className={className}>
       {state.status === "loading" ? (
-        <TimelineSkeleton />
+        <StopsSkeletonRows />
       ) : (
         <ReadyTimeline {...state} {...selection} />
       )}
-    </section>
-  );
-}
-
-function TimelineSkeleton() {
-  return (
-    <div className="mt-3 space-y-3" aria-hidden="true">
-      {Array.from({ length: SKELETON_ROWS }, (_, i) => (
-        <Skeleton key={i} className="h-9 w-full" />
-      ))}
-    </div>
+    </StopsFrame>
   );
 }
 
@@ -86,13 +71,15 @@ function ReadyTimeline({
   days,
   timezone,
   counts,
+  approximate = false,
   selectedStopId = null,
   onSelectStop,
   onSelectDay,
-  hoveredStopId = null,
-  onHoverStop,
+  hover,
 }: ReadyProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  // Only a bounded panel scrolls; below lg the list flows in the page and needs no extra tab stop.
+  const bounded = useMediaQuery(BOUNDED_PANEL);
   const groups = buildDayGroups(stops, timeline, timezone, days);
   const noExtraStops = counts.fuel + counts.break + counts.rest + counts.restart === 0;
 
@@ -124,12 +111,25 @@ function ReadyTimeline({
 
   return (
     // The keydown handler only listens for Escape bubbling up from the row buttons inside.
-    <div className="mt-1 flex min-h-0 flex-1 flex-col" onKeyDown={onKeyDown}>
+    <div
+      className="mt-1 flex min-h-0 flex-1 animate-reveal flex-col [animation-delay:40ms] motion-reduce:animate-none"
+      onKeyDown={onKeyDown}
+    >
+      {approximate ? (
+        <p role="status" className="mb-1 flex items-start gap-2 text-sm text-warn">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          Some stop locations are approximate.
+        </p>
+      ) : null}
       <p className="text-sm text-ink-3">{zoneLabel(timezone)}</p>
       {noExtraStops ? (
         <p className="mt-2 text-base text-ink-2">No stops needed. The trip fits in one shift.</p>
       ) : null}
-      <div ref={scrollerRef} className="relative mt-3 flex-1">
+      <div
+        ref={scrollerRef}
+        {...(bounded ? { role: "region", tabIndex: 0, "aria-label": "Trip timeline" } : {})}
+        className="relative mt-3 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:var(--color-ink-3)_transparent] lg:overflow-y-auto lg:pe-2 lg:focus-visible:outline-offset-[-2px]"
+      >
         {groups.map((group) => (
           <div key={group.key} className="mb-4 last:mb-0">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-rule pb-1">
@@ -156,11 +156,10 @@ function ReadyTimeline({
                   key={row.key}
                   row={row}
                   selected={row.stop.id === selectedStopId}
-                  hovered={row.stop.id === hoveredStopId}
                   onSelect={() => {
                     select(row.stop, group.sheetIndex);
                   }}
-                  onHover={onHoverStop}
+                  hover={hover}
                 />
               ))}
             </ol>
@@ -174,13 +173,13 @@ function ReadyTimeline({
 interface StopRowProps {
   row: TimelineRow;
   selected: boolean;
-  hovered: boolean;
+  hover: HoverStore | undefined;
   onSelect: () => void;
-  onHover?: (stopId: string | null) => void;
 }
 
-function StopRow({ row, selected, hovered, onSelect, onHover }: StopRowProps) {
+function StopRow({ row, selected, hover, onSelect }: StopRowProps) {
   const { stop } = row;
+  const hovered = useIsHovered(hover, [stop.id]);
   const kindLabel = KIND_LABEL[stop.kind];
   const detail = stop.reason !== "" ? stop.reason : stop.note;
   const fullName = `${kindLabel}${row.cont ? " (cont.)" : ""}, ${stop.label}`;
@@ -208,14 +207,13 @@ function StopRow({ row, selected, hovered, onSelect, onHover }: StopRowProps) {
         <button
           type="button"
           aria-pressed={selected}
-          title={fullName}
           aria-label={accessibleName}
           onClick={onSelect}
           onMouseEnter={() => {
-            onHover?.(stop.id);
+            hover?.set(stop.id);
           }}
           onMouseLeave={() => {
-            onHover?.(null);
+            hover?.set(null);
           }}
           className={cn(
             "grid w-full cursor-pointer grid-cols-[3rem_1.5rem_minmax(0,1fr)_auto] items-start gap-x-2 border-s-2 border-transparent px-1 py-2 text-start text-base hover:bg-surface-sunk focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
@@ -238,10 +236,7 @@ function StopRow({ row, selected, hovered, onSelect, onHover }: StopRowProps) {
             ) : null}
           </span>
           <span className="flex items-baseline gap-2 text-sm">
-            <span
-              className="rounded-sm border border-rule-strong px-1 font-mono text-xs"
-              title={STATUS_NAME[stop.duty_status]}
-            >
+            <span className="rounded-sm border border-rule-strong px-1 font-mono text-xs">
               <span aria-hidden="true">{STATUS_CODE[stop.duty_status]}</span>
               <span className="sr-only">{STATUS_NAME[stop.duty_status]}</span>
             </span>

@@ -146,6 +146,11 @@ class LegView:
     distance_mi: float  # exact, as passed to the engine
     duration_min: float  # exact, as passed to the engine
     bounds: Bounds
+    ors_duration_min: float | None = None  # raw ORS estimate for duration_h; None = same as engine
+
+    @property
+    def reported_duration_min(self) -> float:
+        return self.duration_min if self.ors_duration_min is None else self.ors_duration_min
 
 
 @dataclass(frozen=True, slots=True)
@@ -540,7 +545,7 @@ class _Builder:
                     "from_label": inp.places[index].label,
                     "to_label": inp.places[index + 1].label,
                     "distance_mi": as_float(to_fraction(leg.distance_mi), 1),
-                    "duration_h": as_float(to_fraction(leg.duration_min) / 60, 2),
+                    "duration_h": as_float(to_fraction(leg.reported_duration_min) / 60, 2),
                     "planned_driving_h": hours(minutes),
                     "polyline": leg.polyline,
                     "bounds": leg.bounds.as_dto(),

@@ -14,14 +14,17 @@ from typing import Any
 from drf_spectacular.utils import PolymorphicProxySerializer, extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
 
+from routing.models import in_lower_48
 from trips.errors import ApiError, ErrorCode
-from trips.types import LogHeader, PlanRequest
+from trips.types import (
+    START_DATE_DAYS_AHEAD,
+    START_DATE_DAYS_BACK,
+    START_DATE_RANGE_MESSAGE,
+    LogHeader,
+    PlanRequest,
+)
 
-LOWER_48_LAT = (24.0, 49.5)
-LOWER_48_LNG = (-125.0, -66.5)
 DEFAULT_START_TIME = dt.time(8, 0)
-START_DATE_DAYS_BACK = 30
-START_DATE_DAYS_AHEAD = 365
 COORD_DECIMALS = 5
 
 # Rejected in every string: Cc (control incl. CR/LF/TAB), Cf (zero-width, bidi), Cs (lone surrogates),
@@ -83,6 +86,7 @@ class FiniteNumberField(serializers.FloatField):
 _CYCLE_MESSAGE = "Cycle hours must be between 0 and 70, in steps of 0.25."
 
 
+@extend_schema_field({"type": "number", "format": "double", "minimum": 0, "maximum": 70, "multipleOf": 0.25})
 class CycleHoursField(FiniteNumberField):
     """0 to 70 in steps of 0.25. One message for every failure (contract section 6)."""
 
@@ -104,7 +108,7 @@ class CycleHoursField(FiniteNumberField):
 class StartDateField(serializers.Field):
     default_error_messages = {
         "invalid": "Enter the start date as YYYY-MM-DD.",
-        "range": "Start date must be within 30 days before and 365 days after today.",
+        "range": START_DATE_RANGE_MESSAGE,
     }
 
     def to_internal_value(self, data: Any) -> dt.date:
@@ -249,11 +253,7 @@ def _same_place(a: Any, b: Any) -> bool:
 def _require_lower_48(field: str, location: Any) -> None:
     if not isinstance(location, dict):
         return
-    inside = (
-        LOWER_48_LAT[0] <= location["lat"] <= LOWER_48_LAT[1]
-        and LOWER_48_LNG[0] <= location["lng"] <= LOWER_48_LNG[1]
-    )
-    if not inside:
+    if not in_lower_48(location["lat"], location["lng"]):
         raise ApiError(
             ErrorCode.UNSUPPORTED_LOCATION,
             "Trips must start, pick up and drop off in the lower 48 states. "

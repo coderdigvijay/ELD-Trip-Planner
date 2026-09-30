@@ -2,8 +2,8 @@
 
 import pytest
 
+from routing.deadline import Deadline
 from routing.errors import DeadlineExceeded
-from trips.services.deadline import Deadline
 
 
 class FakeClock:

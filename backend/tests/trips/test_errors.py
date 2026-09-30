@@ -176,3 +176,13 @@ def test_django_request_records_are_stripped_of_request_objects():
     assert not hasattr(record, "request")
     record.exc_info = (RuntimeError, RuntimeError("x"), None)
     assert RedactRequestFilter().filter(record)  # tracebacks are kept
+
+
+@pytest.mark.parametrize("method", ["get", "post", "put", "delete", "options"])
+def test_unknown_path_is_json_not_found_even_with_debug_on(client, settings, method):
+    settings.DEBUG = True  # Django would otherwise render its HTML technical 404
+    response = getattr(client, method)("/api/v1/nope")
+    error = assert_envelope(response, 404, ErrorCode.NOT_FOUND)
+    assert response["Content-Type"].startswith("application/json")
+    assert "Traceback" not in response.content.decode() and "urlpattern" not in response.content.decode()
+    assert error["request_id"] == response["X-Request-ID"]

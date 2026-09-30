@@ -8,9 +8,12 @@ import { johnDoeDay, johnDoeHeader, johnDoeTimezone } from "./__fixtures__/johnD
 import { longHaulDays } from "./__fixtures__/longHaul";
 import { LogSheet } from "./LogSheet";
 import { BLANK_FORM } from "./BlankForm";
+import { formatClock } from "./format";
 import { dutyPath } from "./geometry";
+import { LogSheetTable } from "./LogSheetTable";
 import * as sheetModel from "./sheetModel";
-import { FONT_MONO, FONT_SANS, INK, PEN, SURFACE } from "./tokens";
+import { HALF_LEN, QUARTER_LEN, ROW_H } from "./layout";
+import { FONT_MONO, FONT_SANS, HALF_W, INK, LOG_TOKENS, PEN, QUARTER_W, SURFACE } from "./tokens";
 import type { LogDay } from "./types";
 
 vi.mock("./sheetModel", async (importOriginal) => {
@@ -93,8 +96,8 @@ describe("LogSheet, John Doe (spec 6.2 tests 17 to 19)", () => {
     const svg = screen.getByRole("img", {
       name: "Driver's daily log, Fri Apr 9, 2021, sheet 1 of 1",
     });
-    const describedBy = svg.getAttribute("aria-describedby") ?? "";
-    const desc = document.getElementById(describedBy);
+    const describedBy = (svg.getAttribute("aria-describedby") ?? "").split(" ");
+    const desc = document.getElementById(describedBy[0] ?? "");
     expect(desc?.textContent).toBe(
       "Off 10:00 · Sleeper 1:45 · Driving 7:45 · On duty 4:30 · Total 24:00",
     );
@@ -107,7 +110,9 @@ describe("LogSheet, John Doe (spec 6.2 tests 17 to 19)", () => {
         <LogSheet day={johnDoeDay} header={johnDoeHeader} sheetCount={1} summaryId="day-summary" />
       </>,
     );
-    expect(screen.getByRole("img")).toHaveAttribute("aria-describedby", "day-summary");
+    expect(screen.getByRole("img").getAttribute("aria-describedby")?.split(" ")[0]).toBe(
+      "day-summary",
+    );
   });
 
   it("prints the footer, the time base and the six brackets", () => {
@@ -271,6 +276,48 @@ describe("long values (test 24)", () => {
   });
 });
 
+describe("every remark is reachable as text (PITFALL 6, fold rule spec 3.4 step 0)", () => {
+  const cases: [string, LogDay][] = [
+    ["John Doe", johnDoeDay],
+    ["short trip", shortTripDay],
+    ["mid rest", midRestDay],
+    ["restart", restartDay],
+    ...longHaulDays(8).map((d, i): [string, LogDay] => [`long haul day ${i + 1}`, d]),
+  ];
+
+  it.each(cases)("%s: the table and the accessible description carry all remarks", (_name, day) => {
+    const { container } = render(
+      <>
+        <LogSheet day={day} header={johnDoeHeader} sheetCount={8} />
+        <LogSheetTable day={day} header={johnDoeHeader} />
+      </>,
+    );
+    const svg = container.querySelector("svg");
+    const description = (svg?.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent ?? "")
+      .join(" ");
+    const remarksTable = Array.from(container.querySelectorAll("table")).find(
+      (t) => t.querySelector("caption")?.textContent === "Remarks",
+    );
+    const rows = Array.from(remarksTable?.querySelectorAll("tbody tr") ?? []).map((tr) =>
+      Array.from(tr.querySelectorAll("td")).map((td) => td.textContent),
+    );
+    expect(rows).toEqual(day.remarks.map((r) => [formatClock(r.minute), r.location_label, r.note]));
+    for (const r of day.remarks) {
+      expect(description).toContain(`${formatClock(r.minute)} ${r.location_label}, ${r.note}`);
+    }
+  });
+
+  it("John Doe folds some remarks off the drawn sheet, yet all 12 stay in the text", () => {
+    const { container } = renderDoe();
+    const drawn = container.querySelectorAll("[data-remark]").length;
+    expect(johnDoeDay.remarks).toHaveLength(12);
+    expect(drawn).toBeLessThan(12);
+    expect(sheetModel.remarksDescription(johnDoeDay).split("; ")).toHaveLength(12);
+  });
+});
+
 describe("tokens (test 16)", () => {
   const css = readFileSync(join(import.meta.dirname, "..", "..", "index.css"), "utf8");
   const token = (name: string) => new RegExp(`--${name}:\\s*([^;]+);`).exec(css)?.[1]?.trim();
@@ -281,6 +328,43 @@ describe("tokens (test 16)", () => {
     expect(token("color-surface")).toBe(SURFACE);
     expect(token("font-sans")).toBe(FONT_SANS);
     expect(token("font-mono")?.replace(/\s+/g, " ")).toBe(FONT_MONO);
+  });
+
+  it("--log-* colors and fonts alias the theme tokens", () => {
+    expect(token("log-paper")).toBe("var(--color-surface)");
+    expect(token("log-ink")).toBe("var(--color-ink)");
+    expect(token("log-pen")).toBe("var(--color-pen)");
+    for (const name of ["log-label-font", "log-hour-font"]) {
+      expect(token(name)).toBe("var(--font-sans)");
+    }
+    for (const name of ["log-entry-font", "log-remark-font"]) {
+      expect(token(name)).toBe("var(--font-mono)");
+    }
+  });
+
+  it("every numeric --log-* token equals tokens.ts, and the block has no extras", () => {
+    const declared = [...css.matchAll(/--log-([a-z0-9-]+):/g)].map((m) => m[1]);
+    const colorsAndFonts = [
+      "paper",
+      "ink",
+      "pen",
+      "label-font",
+      "hour-font",
+      "entry-font",
+      "remark-font",
+    ];
+    const numeric = declared.filter((n) => n !== undefined && !colorsAndFonts.includes(n));
+    expect(numeric.sort()).toEqual(Object.keys(LOG_TOKENS).sort());
+    for (const [name, value] of Object.entries(LOG_TOKENS)) {
+      const raw = token(`log-${name}`);
+      expect(typeof value === "number" ? Number(raw) : raw).toBe(value);
+    }
+  });
+
+  it("layout geometry follows the row-relative tokens", () => {
+    expect(HALF_LEN).toBe(LOG_TOKENS["half-len"] * ROW_H);
+    expect(Math.round(LOG_TOKENS["quarter-len"] * ROW_H)).toBe(QUARTER_LEN);
+    expect(HALF_W).toBe(QUARTER_W);
   });
 });
 

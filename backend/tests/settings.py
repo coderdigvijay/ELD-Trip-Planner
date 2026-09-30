@@ -6,6 +6,7 @@ be prepared here. The production guard itself is tested in a subprocess (test_se
 
 import os
 
+os.environ["ELD_SKIP_DOTENV"] = "1"  # hermetic: never read backend/.env
 os.environ.setdefault("DJANGO_DEBUG", "false")
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("ORS_API_KEY", "test-ors-key")

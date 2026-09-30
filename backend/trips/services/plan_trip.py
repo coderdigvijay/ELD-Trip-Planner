@@ -21,13 +21,14 @@ from zoneinfo import ZoneInfo
 import hos
 from hos.models import HosEngineError, HosInputError
 from hos.rules import MAX_LEG_DURATION_MIN
-from routing import ors_client
+from routing import ors_client, stats
+from routing.deadline import Deadline
 from routing.geometry import LegGeometry, build_leg_geometry, build_leg_geometry_from_points, interpolate
 from routing.labels import KnownLabel, coordinate_label, fallback_label, reuse_known_label, round_point
 from routing.models import LegRoute, Place
 from routing.timezone import FrozenTimezone, home_terminal_timezone, quantize_time
-from trips.errors import ApiError, ErrorCode, internal_error
-from trips.services.deadline import Deadline
+from trips.errors import TRIP_TOO_LONG_MESSAGE, ApiError, ErrorCode, internal_error
+from trips.service_errors import error_code_of
 from trips.services.response import (
     LABEL_COORDINATES,
     LABEL_GEOCODED,
@@ -44,7 +45,13 @@ from trips.services.response import (
     build_plan_response,
     required_point_keys,
 )
-from trips.types import LocationInput, PlanRequest
+from trips.types import (
+    START_DATE_DAYS_AHEAD,
+    START_DATE_DAYS_BACK,
+    START_DATE_RANGE_MESSAGE,
+    LocationInput,
+    PlanRequest,
+)
 
 logger = logging.getLogger("eld.trips")
 
@@ -55,9 +62,7 @@ MAX_REVERSE_CALLS = 25
 REVERSE_BUDGET_S = 6.0
 REVERSE_RESERVE_S = 1.0
 SAME_PLACE_DP = 5
-MAX_START_DAYS_AHEAD = 30
 MIN_ROUTE_SPEED_MPH = 5
-TRIP_TOO_LONG_MESSAGE = "This trip is too long to plan. Choose closer locations."
 SAME_PLACE_MESSAGE = "Pickup and dropoff are the same place. Choose a different dropoff."
 
 
@@ -125,19 +130,22 @@ class _Leg:
 
     route: LegRoute
     miles: float
-    duration_min: float
+    duration_min: float  # what the engine gets (speed floor applied)
+    ors_duration_min: float  # untouched ORS estimate, for the response
     geometry: LegGeometry
     polyline: str
 
 
 def _normalize_leg(route: LegRoute, start: Place) -> _Leg:
     if route.distance_m == 0 or route.duration_s == 0:
-        return _Leg(route, 0.0, 0.0, build_leg_geometry_from_points([(start.lat, start.lng)], 0.0), "")
+        return _Leg(route, 0.0, 0.0, 0.0, build_leg_geometry_from_points([(start.lat, start.lng)], 0.0), "")
     geometry = build_leg_geometry(route.polyline, route.distance_m)
     miles = route.miles
     # The engine floors speed at MIN_ROUTE_SPEED_MPH; a tiny leg (10 m in 5 s) would fall under it.
-    duration_min = min(route.duration_s / 60, miles * 60 / MIN_ROUTE_SPEED_MPH)
-    return _Leg(route, miles, duration_min, geometry, route.polyline)
+    ors_min = route.duration_s / 60
+    return _Leg(
+        route, miles, min(ors_min, miles * 60 / MIN_ROUTE_SPEED_MPH), ors_min, geometry, route.polyline
+    )
 
 
 def _leg_bounds(leg: _Leg, start: Place, end: Place) -> Bounds:
@@ -251,16 +259,12 @@ def _utc_now() -> dt.datetime:
 
 
 def _check_start_date(start_date: dt.date | None, zone_name: str) -> None:
-    """The serializer allows +-1 UTC day; the real window is 0..30 days from today in the home zone."""
+    """The serializer allows +-1 UTC day; the real window is checked against today in the home zone."""
     if start_date is None:
         return
     today = _utc_now().astimezone(ZoneInfo(zone_name)).date()
-    if not 0 <= (start_date - today).days <= MAX_START_DAYS_AHEAD:
-        raise ApiError(
-            ErrorCode.VALIDATION_ERROR,
-            f"Start date must be within {MAX_START_DAYS_AHEAD} days from today in the start time zone.",
-            field="start_date",
-        )
+    if not -START_DATE_DAYS_BACK <= (start_date - today).days <= START_DATE_DAYS_AHEAD:
+        raise ApiError(ErrorCode.VALIDATION_ERROR, START_DATE_RANGE_MESSAGE, field="start_date")
 
 
 class _Steps:
@@ -280,27 +284,33 @@ def plan_trip(validated: PlanRequest) -> Dto:
     """Plan a trip end to end. Raises routing errors, `ApiError`, or `ApiError(INTERNAL)`."""
     started = time.monotonic()
     log: dict[str, Any] = {}
+    request_stats, token = stats.begin()
     try:
         body = _plan(validated, Deadline(), _Steps(), log)
     except Exception as exc:
-        code = exc.code.value if isinstance(exc, ApiError) else None
         logger.warning(
             "plan_completed",
             extra={
                 "status": "error",
-                "code": code,
+                "code": error_code_of(exc),
                 "error_class": type(exc).__name__,
                 "duration_ms": round((time.monotonic() - started) * 1000),
+                "ors_calls": request_stats.ors_calls,
+                "cache_hits": request_stats.cache_hits,
                 **log,
             },
         )
         raise
+    finally:
+        stats.end(token)
     logger.info(
         "plan_completed",
         extra={
             "status": "ok",
             "code": None,
             "duration_ms": round((time.monotonic() - started) * 1000),
+            "ors_calls": request_stats.ors_calls,
+            "cache_hits": request_stats.cache_hits,
             **log,
         },
     )
@@ -332,7 +342,13 @@ def _plan(validated: PlanRequest, deadline: Deadline, steps: _Steps, log: dict[s
     steps.mark("engine")
 
     views = tuple(
-        LegView(leg.polyline, leg.miles, leg.duration_min, _leg_bounds(leg, places[i], places[i + 1]))
+        LegView(
+            leg.polyline,
+            leg.miles,
+            leg.duration_min,
+            _leg_bounds(leg, places[i], places[i + 1]),
+            leg.ors_duration_min,
+        )
         for i, leg in enumerate(legs)
     )
     place_views = tuple(PlaceView(p.label, p.lat, p.lng, s) for p, s in zip(places, sources, strict=True))

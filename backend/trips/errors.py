@@ -17,6 +17,8 @@ from config.logging import request_id_var
 
 logger = logging.getLogger("eld.errors")
 
+TRIP_TOO_LONG_MESSAGE = "This trip is too long to plan (over 6,000 miles). Try a shorter route."
+
 RETRY_AFTER_MIN_S = 1
 RETRY_AFTER_MAX_S = 300
 

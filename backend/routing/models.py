@@ -12,10 +12,10 @@ Profile = Literal["driving-hgv", "driving-car"]
 
 MAX_TRIP_M = 6000 * METERS_PER_MILE
 
-# Lower 48 bounding box (with a small margin). Coarse on purpose: Canada, Mexico and the
-# Caribbean are already excluded upstream by boundary.country=US.
-LOWER_48_LAT = (24.3, 49.6)
-LOWER_48_LNG = (-125.1, -66.8)
+# Lower 48 bounding box, API_CONTRACT 5.1. The single definition: the request serializer imports it.
+# Coarse on purpose: Canada, Mexico and the Caribbean are already excluded upstream by boundary.country=US.
+LOWER_48_LAT = (24.0, 49.5)
+LOWER_48_LNG = (-125.0, -66.5)
 
 
 def in_lower_48(lat: float, lng: float) -> bool:

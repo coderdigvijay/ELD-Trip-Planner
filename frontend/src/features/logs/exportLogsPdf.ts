@@ -25,8 +25,12 @@ async function fetchBase64(file: string): Promise<string> {
   return btoa(binary);
 }
 
-/** Names svg2pdf can resolve, and bold for the 600 weight (it treats only bold/700 as bold). Works on a clone. */
-function prepareForPdf(svg: SVGSVGElement): void {
+/**
+ * Names svg2pdf can resolve. It looks fonts up by family plus normal or bold, so the heavier weight of each
+ * family (Public Sans 600, IBM Plex Mono 500) becomes bold and is registered to the matching file below;
+ * anything else is normal. Works on a clone.
+ */
+export function prepareForPdf(svg: SVGSVGElement): void {
   svg.removeAttribute("style");
   svg.setAttribute("width", String(SHEET_W));
   svg.setAttribute("height", String(SHEET_H));
@@ -36,7 +40,7 @@ function prepareForPdf(svg: SVGSVGElement): void {
       el.getAttribute("font-family")?.includes("Mono") ? "IBM Plex Mono" : "Public Sans",
     );
   });
-  svg.querySelectorAll<SVGElement>('[font-weight="600"]').forEach((el) => {
+  svg.querySelectorAll<SVGElement>('[font-weight="600"], [font-weight="500"]').forEach((el) => {
     el.setAttribute("font-weight", "bold");
   });
   svg.querySelectorAll("title, desc").forEach((el) => {
@@ -71,7 +75,7 @@ export async function exportLogsPdf(
   };
   register(FONT_FILES.sansRegular, sansRegular, "Public Sans", "normal");
   register(FONT_FILES.sansSemiBold, sansSemiBold, "Public Sans", "bold");
-  register(FONT_FILES.monoMedium, monoMedium, "IBM Plex Mono", "normal");
+  register(FONT_FILES.monoMedium, monoMedium, "IBM Plex Mono", "bold");
   register(FONT_FILES.monoRegular, monoRegular, "IBM Plex Mono", "normal");
 
   // svg2pdf resolves styles from the document, so the clones live off-screen while they render.

@@ -37,6 +37,30 @@ function preloadFonts(): Plugin {
   };
 }
 
+// DESIGN_SYSTEM 3.6: preconnect to the API origin so the warm-up ping skips DNS and TLS. The origin
+// comes from VITE_API_BASE_URL at build time (dev: the localhost one); no variable, no tag.
+function preconnectApi(): Plugin {
+  let baseUrl: unknown;
+  return {
+    name: "preconnect-api",
+    configResolved(config) {
+      baseUrl = config.env["VITE_API_BASE_URL"];
+    },
+    transformIndexHtml() {
+      if (typeof baseUrl !== "string" || baseUrl === "") return [];
+      const origin = URL.canParse(baseUrl) ? new URL(baseUrl).origin : null;
+      if (!origin) return [];
+      return [
+        {
+          tag: "link",
+          attrs: { rel: "preconnect", href: origin, crossorigin: "" },
+          injectTo: "head-prepend" as const,
+        },
+      ];
+    },
+  };
+}
+
 export default defineConfig({
   build: { manifest: true },
   plugins: [
@@ -50,6 +74,7 @@ export default defineConfig({
       fallbackName: (name) => `${name.replace(/ Variable$/, "")} Fallback`,
     }),
     preloadFonts(),
+    preconnectApi(),
   ],
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "src") },
@@ -60,6 +85,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    testTimeout: 30_000,
     env: { VITE_API_BASE_URL: "http://api.test" },
   },
 });

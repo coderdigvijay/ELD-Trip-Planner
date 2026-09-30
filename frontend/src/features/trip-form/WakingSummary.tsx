@@ -20,9 +20,11 @@ export function WakingSummary({ startedAtS, onCancel }: WakingSummaryProps) {
       aria-busy="true"
       className="rounded-md border border-rule bg-surface p-4 md:p-5"
     >
-      <h2 id={headingId} className="label-caps">
-        Summary
-      </h2>
+      <div className="flex min-h-8 items-center">
+        <h2 id={headingId} className="label-caps">
+          Summary
+        </h2>
+      </div>
       <div className="mt-3 min-h-24">
         {/* The live region announces the title once; the ticking counter below stays silent. */}
         <p role="status" className="sr-only">

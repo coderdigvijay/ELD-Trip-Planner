@@ -32,6 +32,7 @@ interface TripFormProps {
 }
 
 const HINT_AFTER_S = 3;
+const COMMA_MESSAGE = "Use a period for decimals, like 23.5.";
 
 const LOG_HEADER_FIELDS: readonly { key: LogHeaderKey; label: string; hint?: string }[] = [
   { key: "driver_name", label: "Driver name" },
@@ -89,10 +90,15 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
   const { control, register, handleSubmit, formState } = form;
   const { errors } = formState;
   const bounds = startDateBounds();
+  const [commaTyped, setCommaTyped] = useState(false);
 
   const submit = handleSubmit(
     (values) => {
       if (pending) return;
+      if (commaTyped) {
+        focusField("current_cycle_used_hours");
+        return;
+      }
       onSubmit(values);
     },
     (invalid) => {
@@ -179,7 +185,7 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
             <Field
               label="Cycle used (last 8 days)"
               index="04"
-              error={fieldState.error?.message}
+              error={fieldState.error?.message ?? (commaTyped ? COMMA_MESSAGE : undefined)}
               hint="On-duty hours already used in the current 70 hr / 8 day cycle."
             >
               {(control) => (
@@ -190,6 +196,7 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
                     field.onChange(next);
                     if (fieldState.error) form.clearErrors("current_cycle_used_hours");
                   }}
+                  onCommaChange={setCommaTyped}
                   onBlur={field.onBlur}
                   inputRef={field.ref}
                   min={0}
@@ -234,7 +241,17 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
           </Field>
           <Field label="Start time" optional error={message(errors, "start_time")}>
             {(control) => (
-              <NativeSelect {...control} disabled={pending} {...register("start_time")}>
+              // Read-only while planning, like the text fields: a native select has no readOnly,
+              // so input is refused (Tab still works) and the state is announced with aria-readonly.
+              <NativeSelect
+                {...control}
+                aria-readonly={pending || undefined}
+                className={pending ? "pointer-events-none bg-surface-sunk" : undefined}
+                onKeyDown={(event) => {
+                  if (pending && event.key !== "Tab") event.preventDefault();
+                }}
+                {...register("start_time")}
+              >
                 {START_TIME_OPTIONS.map((time) => (
                   <option key={time} value={time}>
                     {time}

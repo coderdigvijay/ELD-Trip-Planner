@@ -68,7 +68,9 @@ describe("day tabs", () => {
   it("describes the sheet with the visible summary line", () => {
     render(<DailyLogs state={ready([johnDoeDay], johnDoeHeader)} />);
     const svg = screen.getByRole("img");
-    const summary = document.getElementById(svg.getAttribute("aria-describedby") ?? "");
+    const summary = document.getElementById(
+      svg.getAttribute("aria-describedby")?.split(" ")[0] ?? "",
+    );
     expect(summary).toBeVisible();
     expect(summary).toHaveTextContent(
       "Off 10:00 · Sleeper 1:45 · Driving 7:45 · On duty 4:30 · Total 24:00",
@@ -179,7 +181,11 @@ describe("scroll mode (narrow container)", () => {
     render(<DailyLogs state={ready([johnDoeDay], johnDoeHeader)} />);
     const region = screen.getByRole("region", { name: "Log sheet, scroll horizontally" });
     expect(region).toHaveAttribute("tabindex", "0");
-    expect(screen.getByTestId("sheet-frame")).toHaveStyle({ width: "960px" });
+    // The tab panel itself is not a tab stop (the region is the only one).
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("tabindex", "-1");
+    // Sizing is a CSS container query (checked in a real browser by e2e/logs.spec.ts).
+    expect(screen.getByTestId("sheet-frame")).toHaveAttribute("data-fit", "false");
+    expect(screen.getByTestId("sheet-frame")).toHaveClass("w-[960px]");
     expect(
       screen.getByText("Scroll sideways to read the full sheet, or print it."),
     ).toBeInTheDocument();
@@ -190,7 +196,7 @@ describe("scroll mode (narrow container)", () => {
       "aria-pressed",
       "true",
     );
-    expect(screen.getByTestId("sheet-frame")).toHaveStyle({ width: "100%" });
+    expect(screen.getByTestId("sheet-frame")).toHaveAttribute("data-fit", "true");
     expect(screen.queryByRole("region", { name: "Log sheet, scroll horizontally" })).toBeNull();
   });
 
@@ -199,7 +205,7 @@ describe("scroll mode (narrow container)", () => {
     render(<DailyLogs state={ready([johnDoeDay], johnDoeHeader)} />);
     expect(screen.queryByRole("region", { name: "Log sheet, scroll horizontally" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Fit width" })).toBeNull();
-    expect(screen.getByTestId("sheet-frame")).toHaveStyle({ maxWidth: "1200px" });
+    expect(screen.getByTestId("sheet-frame")).toHaveClass("@min-[900px]:max-w-[1200px]");
   });
 });
 

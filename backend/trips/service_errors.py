@@ -6,6 +6,7 @@ Messages are written here from validated input only, never from an exception or 
 import logging
 from typing import Any
 
+# This module is the mapping layer: it is allowed to import both hos and routing exceptions.
 from hos import HosEngineError, HosInputError
 from routing.errors import (
     LocationNotFound,
@@ -19,7 +20,7 @@ from routing.errors import (
     UpstreamRateLimited,
     UpstreamUnavailable,
 )
-from trips.errors import ApiError, ErrorCode, clamp_retry_after, internal_error
+from trips.errors import TRIP_TOO_LONG_MESSAGE, ApiError, ErrorCode, clamp_retry_after, internal_error
 
 logger = logging.getLogger("eld.errors")
 
@@ -45,9 +46,8 @@ def _per_minute(retry_after_s: float | None) -> ApiError:
     )
 
 
-def map_service_error(exc: Exception, validated: dict[str, Any] | None = None) -> ApiError:
-    """Translate one service exception. `validated` supplies the user's own (normalized) place text."""
-    validated = validated or {}
+def _known_mapping(exc: Exception, validated: dict[str, Any]) -> ApiError | None:
+    """The documented mapping; None for anything that is really an internal error. No side effects."""
     if isinstance(exc, LocationNotFound):
         text = _label_of(validated, exc.field)
         return ApiError(
@@ -65,12 +65,11 @@ def map_service_error(exc: Exception, validated: dict[str, Any] | None = None) -
     if isinstance(exc, RouteNotFound):
         return ApiError(
             ErrorCode.ROUTE_NOT_FOUND,
-            "We couldn't find a drivable route between these places. Try a nearby city or a street address.",
+            f"We couldn't find a drivable route between {exc.from_label} and {exc.to_label}. "
+            "Try a nearby city or a street address.",
         )
     if isinstance(exc, TripTooLong):
-        return ApiError(
-            ErrorCode.TRIP_TOO_LONG, "This trip is too long to plan (over 6,000 miles). Try a shorter route."
-        )
+        return ApiError(ErrorCode.TRIP_TOO_LONG, TRIP_TOO_LONG_MESSAGE)
     if isinstance(exc, UpstreamRateLimited):
         return _per_minute(exc.retry_after_s)
     if isinstance(exc, UpstreamQuotaExhausted):
@@ -81,6 +80,24 @@ def map_service_error(exc: Exception, validated: dict[str, Any] | None = None) -
     if isinstance(exc, UpstreamUnavailable | UpstreamAuthError | UpstreamBadResponse):
         # DeadlineExceeded is an UpstreamUnavailable. The adapter already logged auth/malformed causes.
         return ApiError(ErrorCode.UPSTREAM_UNAVAILABLE, _UNAVAILABLE)
+    return None
+
+
+def map_service_error(exc: Exception, validated: dict[str, Any] | None = None) -> ApiError:
+    """Translate one service exception. `validated` supplies the user's own (normalized) place text."""
+    mapped = _known_mapping(exc, validated or {})
+    if mapped is not None:
+        return mapped
     # UpstreamBadRequest, other RoutingError, HosInputError (our bug or bad ORS data), HosEngineError.
     logger.error("service_error", exc_info=(type(exc), exc, exc.__traceback__))
     return internal_error()
+
+
+def error_code_of(exc: Exception) -> str:
+    """The API code this exception will produce, for the plan_completed log line. Logs nothing."""
+    if isinstance(exc, ApiError):
+        return exc.code.value
+    if isinstance(exc, SERVICE_ERRORS):
+        mapped = _known_mapping(exc, {})
+        return (mapped.code if mapped else ErrorCode.INTERNAL).value
+    return ErrorCode.INTERNAL.value

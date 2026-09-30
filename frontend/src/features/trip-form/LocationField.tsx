@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/autocomplete";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip } from "@/components/ui/tooltip";
 import { splitMatch } from "@/lib/normalize";
 import { ApiError } from "@/services/errors";
 import { autocomplete, type PlaceSuggestion } from "@/services/places";
@@ -43,11 +44,13 @@ function isSamePick(value: LocationValue, item: PlaceSuggestion): boolean {
 function Emphasis({ text, needle }: { text: string; needle: string }) {
   const { before, match, after } = splitMatch(text, needle);
   return (
-    <span className="line-clamp-2 min-w-0 flex-1 font-medium" title={text}>
-      {before}
-      {match ? <strong className="font-semibold">{match}</strong> : null}
-      {after}
-    </span>
+    <Tooltip content={text}>
+      <span className="line-clamp-2 min-w-0 flex-1 font-medium">
+        {before}
+        {match ? <strong className="font-semibold">{match}</strong> : null}
+        {after}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -167,6 +170,10 @@ export function LocationField({
             aria-describedby={describedBy}
             title={typing ? undefined : text}
             className="truncate"
+            onFocus={() => {
+              // An empty field says what it needs before the first keystroke (DESIGN_SYSTEM 5.3).
+              if (trimmed.length < SUGGEST_MIN_CHARS) setOpen(true);
+            }}
             onBlur={onBlur}
           />
           {showLoader ? (

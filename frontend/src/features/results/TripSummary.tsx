@@ -1,11 +1,12 @@
 import { Alert } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useId } from "react";
 import { AssumptionsDialog } from "./AssumptionsDialog";
+import { SummarySkeleton } from "./SummarySkeleton";
 import { formatDuration, formatHoursPlain, formatMilesWhole, formatSpan } from "./time";
 import type { PanelState, TripMeta, TripSummaryData } from "./types";
-import { warningCopy } from "./warnings";
+import { Badge } from "@/components/ui/badge";
+import { CAR_PROFILE_USED, hasWarning, LABELS_APPROXIMATED, warningCopy } from "./warnings";
 
 /**
  * TripSummary props
@@ -22,8 +23,6 @@ export interface TripSummaryProps {
   className?: string;
 }
 
-const FIGURE_COUNT = 5;
-
 export function TripSummary({ state, stale = false, className }: TripSummaryProps) {
   const headingId = useId();
   if (state.status === "empty" || state.status === "error") return null;
@@ -34,10 +33,15 @@ export function TripSummary({ state, stale = false, className }: TripSummaryProp
       aria-busy={state.status === "loading"}
       className={cn("rounded-md border border-rule bg-surface p-4 md:p-5", className)}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={headingId} className="label-caps">
-          Summary
-        </h2>
+      <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h2 id={headingId} className="label-caps">
+            Summary
+          </h2>
+          {state.status === "ready" && hasWarning(state.trip.warnings, CAR_PROFILE_USED) ? (
+            <Badge variant="warn">Car route</Badge>
+          ) : null}
+        </div>
         {state.status === "ready" ? (
           <AssumptionsDialog assumptions={state.trip.assumptions} />
         ) : null}
@@ -52,25 +56,10 @@ export function TripSummary({ state, stale = false, className }: TripSummaryProp
   );
 }
 
-function SummarySkeleton() {
-  return (
-    <div className="mt-3 min-h-24" aria-hidden="true">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-5">
-        {Array.from({ length: FIGURE_COUNT }, (_, i) => (
-          <div key={i} className="space-y-1">
-            <Skeleton className="h-7 w-24" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-        ))}
-      </div>
-      <Skeleton className="mt-3 h-4 w-64" />
-    </div>
-  );
-}
-
 function SummaryFigures({ summary, trip }: { summary: TripSummaryData; trip: TripMeta }) {
   // Very long trips shrink the figures so nothing truncates (DESIGN_SYSTEM 9).
   const compact = summary.total_distance_mi >= 5000 || summary.sheet_count >= 14;
+  const summaryWarnings = trip.warnings.filter((w) => w.code !== LABELS_APPROXIMATED);
   const figures: { label: string; value: string }[] = [
     { label: "Distance", value: formatMilesWhole(summary.total_distance_mi) },
     { label: "Driving", value: formatDuration(summary.driving_h) },
@@ -83,7 +72,7 @@ function SummaryFigures({ summary, trip }: { summary: TripSummaryData; trip: Tri
   ];
   return (
     <>
-      <div className="mt-3 min-h-24">
+      <div className="mt-3 min-h-24 animate-reveal motion-reduce:animate-none">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-5">
           {figures.map((f) => (
             <div key={f.label} className="flex min-w-0 flex-col-reverse justify-end">
@@ -101,9 +90,9 @@ function SummaryFigures({ summary, trip }: { summary: TripSummaryData; trip: Tri
         </dl>
         <StopCountsLine counts={summary.counts} />
       </div>
-      {trip.warnings.length > 0 ? (
+      {summaryWarnings.length > 0 ? (
         <ul className="mt-4 space-y-2">
-          {trip.warnings.map((w) => {
+          {summaryWarnings.map((w) => {
             const copy = warningCopy(w);
             return (
               <li key={w.code}>

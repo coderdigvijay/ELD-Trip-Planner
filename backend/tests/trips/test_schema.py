@@ -145,6 +145,8 @@ def test_request_limits_are_in_the_schema(spec):
         0,
         70,
     )
+    assert props["current_cycle_used_hours"]["multipleOf"] == 0.25
+    assert props["start_time"]["pattern"] == "^([01][0-9]|2[0-3]):(00|15|30|45)$"
     place = spec["components"]["schemas"]["PlaceInput"]["properties"]
     assert place["lat"]["maximum"] == 90
     assert place["label"]["maxLength"] == 200

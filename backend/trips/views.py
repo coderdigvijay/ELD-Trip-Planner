@@ -8,6 +8,7 @@ import drf_spectacular_sidecar
 from django.core.exceptions import SuspiciousOperation
 from django.views.static import serve
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework.exceptions import NotFound
 from rest_framework.negotiation import BaseContentNegotiation
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -15,7 +16,7 @@ from rest_framework.views import APIView
 
 from trips.errors import ApiError, ErrorCode
 from trips.inflight import PlanInflightGuard
-from trips.parsers import BODY_TOO_LARGE_MESSAGE, MAX_BODY_BYTES, BoundedJSONParser
+from trips.parsers import BODY_TOO_LARGE_MESSAGE, MAX_BODY_BYTES, NOT_JSON_MESSAGE, BoundedJSONParser
 from trips.response_serializers import AutocompleteResponseSerializer, PlanTripResponseSerializer
 from trips.serializers import (
     ErrorResponseSerializer,
@@ -69,6 +70,8 @@ def _reject_bad_body_headers(request: Request) -> None:
     media_type = (request.content_type or "").split(";")[0].strip().lower()
     if media_type != "application/json":
         raise ApiError(ErrorCode.VALIDATION_ERROR, NOT_JSON_CONTENT_TYPE_MESSAGE)
+    if int(length) == 0:  # DRF skips the parser for an empty body, which would give per-field errors
+        raise ApiError(ErrorCode.VALIDATION_ERROR, NOT_JSON_MESSAGE)
 
 
 def _call_service(service: Callable[[Any], dict], argument: Any, validated: dict[str, Any]) -> dict:
@@ -95,6 +98,21 @@ class HealthView(APIView):
     )
     def get(self, request: Request) -> Response:
         return Response({"status": "ok", "api_version": "1"})
+
+
+class NotFoundView(APIView):
+    """Catch-all for unknown paths.
+
+    With DEBUG on, Django answers an unrouted path with its HTML debug page, which breaks the JSON-only
+    error contract on the dev server. A routed view goes through our exception handler instead.
+    """
+
+    throttle_classes: list = []
+    authentication_classes: list = []
+    permission_classes: list = []
+
+    def initial(self, request: Request, *args: Any, **kwargs: Any) -> None:
+        raise NotFound
 
 
 class PlanTripView(ContractThrottleMixin, APIView):
