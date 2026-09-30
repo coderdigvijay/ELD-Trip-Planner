@@ -2,11 +2,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const FIGURE_COUNT = 5;
 
-/** Placeholder for the five summary figures. Same box (min-h-24) and grid as the loaded figures. */
+/** Placeholder for the five summary figures. Same box (min-h-19.5) and grid as the loaded figures. */
 export function SummarySkeleton() {
   return (
-    <div className="mt-3 min-h-24" aria-hidden="true">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-5">
+    <div className="mt-3 min-h-19.5" aria-hidden="true">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-5">
         {Array.from({ length: FIGURE_COUNT }, (_, i) => (
           <div key={i} className="flex flex-col">
             {/* Line heights of the loaded figure: value 24 px (28 from md), label 18 px. */}

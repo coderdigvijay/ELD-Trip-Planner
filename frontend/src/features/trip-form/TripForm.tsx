@@ -138,9 +138,9 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
       }}
       onFocus={onFocusWithin}
       aria-busy={pending}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-5"
     >
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:flex lg:flex-col">
+      <div className="flex flex-col gap-5 md:grid md:grid-cols-2 lg:flex lg:flex-col">
         {locationFields.map(({ name, label, index }) => (
           <Controller
             key={name}
@@ -156,7 +156,7 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
                     ? "We'll look this place up when you plan."
                     : undefined
                 }
-                reserveHint
+                hintSrOnly
               >
                 {(control) => (
                   <LocationField

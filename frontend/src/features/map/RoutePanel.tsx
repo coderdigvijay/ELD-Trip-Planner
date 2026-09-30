@@ -15,7 +15,7 @@ interface RoutePanelProps {
 
 /**
  * The route panel shell. It lives outside the lazy chunk so the skeleton and the loaded map share
- * one frame: same heading row, same fixed heights (280 / 360 / 400 px), so nothing shifts (CLS).
+ * one frame: same heading row, same minimum heights (280 / 360 / 400 px, the map grows to fill a taller row), so nothing shifts (CLS).
  */
 export function RoutePanel({
   action,
@@ -31,7 +31,7 @@ export function RoutePanel({
       aria-labelledby={headingId}
       aria-busy={busy}
       onKeyDown={onKeyDown}
-      className={cn("rounded-md border border-rule bg-surface p-4 md:p-5", className)}
+      className={cn("flex flex-col rounded-md border border-rule bg-surface p-4 md:p-5", className)}
     >
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
         <h2 id={headingId} className="label-caps">
@@ -39,8 +39,8 @@ export function RoutePanel({
         </h2>
         {action}
       </div>
-      <div className="relative mt-3 h-70 overflow-hidden rounded-md border border-rule bg-surface-sunk lg:h-90 xl:h-100">
-        {children}
+      <div className="relative mt-3 min-h-70 flex-1 overflow-hidden rounded-md border border-rule bg-surface-sunk lg:min-h-90 xl:min-h-100">
+        <div className="absolute inset-0">{children}</div>
       </div>
       <div className="mt-3 min-h-10">{footer}</div>
     </section>

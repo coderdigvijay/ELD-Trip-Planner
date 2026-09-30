@@ -16,8 +16,11 @@ interface FieldProps {
   optional?: boolean;
   hint?: ReactNode;
   error?: string | undefined;
-  /** Keep a hint row reserved so a hint appearing does not shift the layout. */
-  reserveHint?: boolean;
+  /**
+   * Announce the hint through aria-describedby but take it out of the layout, so a hint that comes
+   * and goes never shifts the spacing between fields.
+   */
+  hintSrOnly?: boolean;
   className?: string;
   children: (control: FieldControlProps) => ReactNode;
 }
@@ -29,7 +32,7 @@ export function Field({
   optional,
   hint,
   error,
-  reserveHint,
+  hintSrOnly,
   className,
   children,
 }: FieldProps) {
@@ -37,7 +40,7 @@ export function Field({
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const describedBy =
-    [hint || reserveHint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") ||
+    [hint || hintSrOnly ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") ||
     undefined;
 
   return (
@@ -57,8 +60,8 @@ export function Field({
         </span>
       </label>
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
-      {hint || reserveHint ? (
-        <p id={hintId} className={cn("text-sm text-ink-3", reserveHint && "min-h-4.5")}>
+      {hint || hintSrOnly ? (
+        <p id={hintId} className={cn("text-sm text-ink-3", hintSrOnly && "sr-only")}>
           {hint}
         </p>
       ) : null}

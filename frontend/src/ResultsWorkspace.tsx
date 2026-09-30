@@ -94,7 +94,7 @@ export function ResultsMain({
   return (
     <>
       {summarySlot ?? <TripSummary state={summaryState(plan, loading)} stale={stale} />}
-      <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <LazyMapView
           state={mapState(plan, loading)}
           selectedStopId={selectedStopId}

@@ -167,5 +167,66 @@ export const REMARK_NOTE_DY = 13;
 export const FOOTER_Y = 1008;
 export const FOOTER_DATE_X = 44;
 export const FOOTER_SHEET_X = 944;
-/** Home terminal time base (2.4): text-anchor end. */
-export const TIME_BASE_POS = { x: 944, y: 826 } as const;
+/** Home terminal time base (2.7): footer row, text-anchor middle, same baseline as date and sheet. */
+export const TIME_BASE_POS = { x: 500, y: FOOTER_Y } as const;
+
+export interface TextBox {
+  name: string;
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+const FOOTNOTE_X = 856;
+const FOOTNOTE_Y = [836, 850, 864, 878, 892] as const;
+const FOOTNOTE_CHARS = 15;
+const RESTART_MAX_LINES = 3;
+const RESTART_CHARS = 14;
+const RECAP_VALUE_CHARS = 5;
+const TIME_BASE_CHARS = 38;
+const SHEET_LABEL_CHARS = 13;
+const DATE_CHARS = 10;
+const TEXT_SIZE = 10;
+/** Upper bound of an advance at size 10: mono is exactly 0.6 em, the sans faces stay under it. */
+const ADVANCE = 0.6 * TEXT_SIZE;
+
+function box(
+  name: string,
+  anchor: "start" | "middle" | "end",
+  x: number,
+  y: number,
+  chars: number,
+) {
+  const w = chars * ADVANCE;
+  const x0 = anchor === "start" ? x : anchor === "middle" ? x - w / 2 : x - w;
+  return { name, x0, x1: x0 + w, y0: y - 0.8 * TEXT_SIZE, y1: y + 0.2 * TEXT_SIZE };
+}
+
+/**
+ * Conservative bounding boxes of every text node in the recap and footer band (the 34 hr
+ * footnote, recap values, restart note, footer date, time base and sheet label). Used by the
+ * overlap test; the widths are upper bounds (0.6 em per character).
+ */
+export function bandTextBoxes(): TextBox[] {
+  return [
+    ...FOOTNOTE_Y.map((y, i) =>
+      box(`footnote-${String(i)}`, "start", FOOTNOTE_X, y, FOOTNOTE_CHARS),
+    ),
+    ...Object.entries(RECAP_X).map(([k, x]) =>
+      box(`recap-${k}`, "middle", x, RECAP_Y, RECAP_VALUE_CHARS),
+    ),
+    ...Array.from({ length: RESTART_MAX_LINES }, (_, i) =>
+      box(
+        `restart-${String(i)}`,
+        "start",
+        RESTART_POS.x,
+        RESTART_POS.y + i * RESTART_POS.lineH,
+        RESTART_CHARS,
+      ),
+    ),
+    box("footer-date", "start", FOOTER_DATE_X, FOOTER_Y, DATE_CHARS),
+    box("footer-time-base", "middle", TIME_BASE_POS.x, TIME_BASE_POS.y, TIME_BASE_CHARS),
+    box("footer-sheet", "end", FOOTER_SHEET_X, FOOTER_Y, SHEET_LABEL_CHARS),
+  ];
+}

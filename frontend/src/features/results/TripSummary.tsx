@@ -72,8 +72,8 @@ function SummaryFigures({ summary, trip }: { summary: TripSummaryData; trip: Tri
   ];
   return (
     <>
-      <div className="mt-3 min-h-24 animate-reveal motion-reduce:animate-none">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-5">
+      <div className="mt-3 min-h-19.5 animate-reveal motion-reduce:animate-none">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3 xl:grid-cols-5">
           {figures.map((f) => (
             <div key={f.label} className="flex min-w-0 flex-col-reverse justify-end">
               <dt className="text-sm text-ink-3">{f.label}</dt>

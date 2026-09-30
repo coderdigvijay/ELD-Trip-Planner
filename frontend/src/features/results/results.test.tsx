@@ -164,7 +164,7 @@ describe("StopTimeline", () => {
     try {
       render(<StopTimeline state={readyTimeline} />);
       const stopsCard = screen.getByRole("region", { name: "Stops" });
-      expect(stopsCard).toHaveClass("lg:h-120", "xl:h-100");
+      expect(stopsCard).toHaveClass("lg:max-h-120", "xl:relative");
       const scroller = screen.getByRole("region", { name: "Trip timeline" });
       expect(scroller).toHaveAttribute("tabindex", "0");
       expect(scroller).toHaveClass("lg:overflow-y-auto");
@@ -284,7 +284,7 @@ describe("TripSummary", () => {
   it("reserves the figure box while loading and renders nothing for empty or error", () => {
     const { container, rerender } = render(<TripSummary state={{ status: "loading" }} />);
     expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(11);
-    expect(container.querySelector(".min-h-24")).not.toBeNull();
+    expect(container.querySelector(".min-h-19\\.5")).not.toBeNull();
     rerender(<TripSummary state={{ status: "empty" }} />);
     expect(container).toBeEmptyDOMElement();
     rerender(<TripSummary state={{ status: "error" }} />);

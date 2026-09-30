@@ -119,7 +119,10 @@ describe("LogSheet, John Doe (spec 6.2 tests 17 to 19)", () => {
     const { container } = renderDoe({ sheetCount: 5, day: { ...johnDoeDay, sheet_index: 2 } });
     expect(screen.getByText("Sheet 2 of 5")).toBeInTheDocument();
     expect(screen.getByText("04/09/2021")).toBeInTheDocument();
-    expect(screen.getByText("Home terminal time: EDT (UTC-04:00)")).toBeInTheDocument();
+    const timeBase = screen.getByText("Home terminal time: EDT (UTC-04:00)");
+    expect(timeBase).toBeInTheDocument();
+    expect(timeBase.getAttribute("text-anchor")).toBe("middle");
+    expect(timeBase.getAttribute("y")).toBe(screen.getByText("Sheet 2 of 5").getAttribute("y"));
     expect(
       container.querySelector('[data-part="brackets"]')?.getAttribute("d")?.match(/M/g),
     ).toHaveLength(6);

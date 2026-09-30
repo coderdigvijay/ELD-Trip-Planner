@@ -44,7 +44,7 @@ function ResultsFallback() {
   return (
     <>
       <SummaryFallback />
-      <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <MapSkeleton />
         <StopsFallback />
       </div>
@@ -178,10 +178,10 @@ export function Workspace({ onResultsChange }: WorkspaceProps) {
           Skip to results
         </a>
       )}
-      <div className="grid gap-6 lg:grid-cols-[344px_1fr] lg:gap-8 xl:grid-cols-[360px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[344px_1fr] xl:grid-cols-[360px_1fr]">
         <section
           aria-labelledby="trip-heading"
-          className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5"
+          className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5 lg:sticky lg:top-6"
         >
           <h2 id="trip-heading" className="label-caps">
             Trip

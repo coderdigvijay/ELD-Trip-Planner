@@ -303,7 +303,7 @@ function LogSheetImpl({
             y={TIME_BASE_POS.y}
             fontFamily={FONT_SANS}
             fontWeight={400}
-            textAnchor="end"
+            textAnchor="middle"
           >
             {model.timeBase}
           </text>
