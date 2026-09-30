@@ -2,7 +2,7 @@ import { useId } from "react";
 
 import { STATUS_ORDER, STATUS_TERM } from "./layout";
 import { formatClock, formatHours, splitDate } from "./format";
-import type { LogDay, TripTimezone } from "./types";
+import type { LogDay, LogHeader, TripTimezone } from "./types";
 
 // Text alternative for the sheet (LOG_SHEET_RENDER_SPEC 5.5): every segment, remark, total and recap value.
 
@@ -14,12 +14,13 @@ const caption = "pb-1 text-left text-sm font-semibold text-ink";
 
 export interface LogSheetTableProps {
   day: LogDay;
+  header?: LogHeader;
   timezone?: TripTimezone;
   /** Open the disclosure (used when the sheet could not be drawn). */
   forceOpen?: boolean;
 }
 
-export function LogSheetTable({ day, timezone, forceOpen = false }: LogSheetTableProps) {
+export function LogSheetTable({ day, header, timezone, forceOpen = false }: LogSheetTableProps) {
   const uid = useId();
   const { mm, dd, yyyy } = splitDate(day.date);
   const zone = timezone ? ` (${timezone.abbreviation})` : "";
@@ -118,6 +119,20 @@ export function LogSheetTable({ day, timezone, forceOpen = false }: LogSheetTabl
             </tbody>
           </table>
         </div>
+
+        {header ? (
+          <div role="group" aria-labelledby={`${uid}-header`}>
+            <h3 id={`${uid}-header`} className={caption}>
+              Sheet header
+            </h3>
+            <dl className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-ink-2">Shipping document</dt>
+              <dd className="wrap-break-word">{header.shipping_doc}</dd>
+              <dt className="text-ink-2">Shipper and commodity</dt>
+              <dd className="wrap-break-word">{header.shipper_commodity}</dd>
+            </dl>
+          </div>
+        ) : null}
 
         <div role="group" aria-labelledby={`${uid}-recap`}>
           <h3 id={`${uid}-recap`} className={caption}>

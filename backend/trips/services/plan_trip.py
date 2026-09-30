@@ -9,15 +9,18 @@ errors raised here are `ApiError` for user-caused input problems and `INTERNAL` 
 from __future__ import annotations
 
 import contextvars
+import datetime as dt
 import logging
 import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import hos
 from hos.models import HosEngineError, HosInputError
+from hos.rules import MAX_LEG_DURATION_MIN
 from routing import ors_client
 from routing.geometry import LegGeometry, build_leg_geometry, build_leg_geometry_from_points, interpolate
 from routing.labels import KnownLabel, coordinate_label, fallback_label, reuse_known_label, round_point
@@ -52,6 +55,9 @@ MAX_REVERSE_CALLS = 25
 REVERSE_BUDGET_S = 6.0
 REVERSE_RESERVE_S = 1.0
 SAME_PLACE_DP = 5
+MAX_START_DAYS_AHEAD = 30
+MIN_ROUTE_SPEED_MPH = 5
+TRIP_TOO_LONG_MESSAGE = "This trip is too long to plan. Choose closer locations."
 SAME_PLACE_MESSAGE = "Pickup and dropoff are the same place. Choose a different dropoff."
 
 
@@ -128,7 +134,10 @@ def _normalize_leg(route: LegRoute, start: Place) -> _Leg:
     if route.distance_m == 0 or route.duration_s == 0:
         return _Leg(route, 0.0, 0.0, build_leg_geometry_from_points([(start.lat, start.lng)], 0.0), "")
     geometry = build_leg_geometry(route.polyline, route.distance_m)
-    return _Leg(route, route.miles, route.duration_s / 60, geometry, route.polyline)
+    miles = route.miles
+    # The engine floors speed at MIN_ROUTE_SPEED_MPH; a tiny leg (10 m in 5 s) would fall under it.
+    duration_min = min(route.duration_s / 60, miles * 60 / MIN_ROUTE_SPEED_MPH)
+    return _Leg(route, miles, duration_min, geometry, route.polyline)
 
 
 def _leg_bounds(leg: _Leg, start: Place, end: Place) -> Bounds:
@@ -216,6 +225,8 @@ def _timing(frozen: FrozenTimezone) -> Timing:
 def _run_engine(
     legs: Sequence[_Leg], places: Sequence[Place], cycle_h: float, start_min: int
 ) -> hos.PlanResult:
+    if any(leg.duration_min > MAX_LEG_DURATION_MIN for leg in legs):
+        raise ApiError(ErrorCode.TRIP_TOO_LONG, TRIP_TOO_LONG_MESSAGE)
     trip = hos.TripInput(
         legs=(
             hos.Leg(legs[0].miles, legs[0].duration_min, places[0].label, places[1].label),
@@ -226,9 +237,30 @@ def _run_engine(
     )
     try:
         return hos.plan(trip)
-    except (HosInputError, HosEngineError) as exc:
+    except HosInputError as exc:
+        # Every input to the engine is route-derived or already validated, so this is a route problem.
+        logger.warning("hos_engine_rejected", extra={"error_class": type(exc).__name__})
+        raise ApiError(ErrorCode.TRIP_TOO_LONG, TRIP_TOO_LONG_MESSAGE) from None
+    except HosEngineError as exc:
         logger.error("hos_engine_rejected", extra={"error_class": type(exc).__name__})
         raise internal_error() from None
+
+
+def _utc_now() -> dt.datetime:
+    return dt.datetime.now(dt.UTC)
+
+
+def _check_start_date(start_date: dt.date | None, zone_name: str) -> None:
+    """The serializer allows +-1 UTC day; the real window is 0..30 days from today in the home zone."""
+    if start_date is None:
+        return
+    today = _utc_now().astimezone(ZoneInfo(zone_name)).date()
+    if not 0 <= (start_date - today).days <= MAX_START_DAYS_AHEAD:
+        raise ApiError(
+            ErrorCode.VALIDATION_ERROR,
+            f"Start date must be within {MAX_START_DAYS_AHEAD} days from today in the start time zone.",
+            field="start_date",
+        )
 
 
 class _Steps:
@@ -293,6 +325,7 @@ def _plan(validated: PlanRequest, deadline: Deadline, steps: _Steps, log: dict[s
     frozen = home_terminal_timezone(
         places[0].lat, places[0].lng, validated.get("start_date"), validated["start_time"]
     )
+    _check_start_date(validated.get("start_date"), frozen.name)
     start = quantize_time(validated["start_time"])
     cycle_h = float(validated["current_cycle_used_hours"])
     result = _run_engine(legs, places, cycle_h, start.hour * 60 + start.minute)

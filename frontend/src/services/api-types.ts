@@ -454,6 +454,24 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description NOT_FOUND: there is no API endpoint at this address. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description METHOD_NOT_ALLOWED: this endpoint does not accept that HTTP method. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Rate limited. Read retry_after_s or the Retry-After header. */
             429: {
                 headers: {
@@ -511,6 +529,24 @@ export interface operations {
             };
             /** @description VALIDATION_ERROR: the request must change. See field and details. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND: there is no API endpoint at this address. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description METHOD_NOT_ALLOWED: this endpoint does not accept that HTTP method. */
+            405: {
                 headers: {
                     [name: string]: unknown;
                 };

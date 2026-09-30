@@ -108,6 +108,24 @@ describe("Workspace", () => {
     expect(new URLSearchParams(window.location.search).get("q")).not.toBeNull();
   });
 
+  it("offers a skip link to the results only once a plan exists", async () => {
+    server.use(
+      health,
+      http.post("*/api/v1/trips/plan", () => HttpResponse.json(plan)),
+    );
+    const user = userEvent.setup();
+    render(<App queryClient={client()} />);
+    expect(screen.queryByRole("link", { name: "Skip to results" })).toBeNull();
+
+    await fillAndSubmit(user);
+    await screen.findByRole("heading", { name: "Summary" });
+    const link = screen.getByRole("link", { name: "Skip to results" });
+    expect(link).toHaveAttribute("href", "#results");
+    const region = screen.getByRole("region", { name: "Results" });
+    expect(region).toHaveAttribute("id", "results");
+    expect(region).toHaveAttribute("tabindex", "-1");
+  });
+
   it("keeps list, map and logs in sync on selection", async () => {
     server.use(
       health,

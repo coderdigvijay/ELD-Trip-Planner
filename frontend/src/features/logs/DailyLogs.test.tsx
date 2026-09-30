@@ -219,4 +219,9 @@ describe("print", () => {
     });
     print.mockRestore();
   });
+
+  it("shows the full shipper and commodity in the table view", () => {
+    render(<DailyLogs state={ready([johnDoeDay])} />);
+    expect(screen.getByText(shortTripHeader.shipper_commodity)).toBeInTheDocument();
+  });
 });

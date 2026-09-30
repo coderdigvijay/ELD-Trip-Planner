@@ -55,7 +55,7 @@ function ResultsFallback() {
       </section>
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <MapSkeleton />
-        <Skeleton className="h-64 w-full lg:h-120 xl:h-100" />
+        <Skeleton className="h-64 w-full" />
       </div>
     </>
   );
@@ -93,7 +93,7 @@ export function Workspace() {
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [logFocus, setLogFocus] = useState<LogFocus | undefined>(undefined);
   const submitRef = useRef<HTMLButtonElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLElement>(null);
   const pendingValues = useRef<TripFormValues | null>(null);
 
   const planner = usePlanTrip({
@@ -158,113 +158,134 @@ export function Workspace() {
   const showEmpty = !planner.isPending && !plan && !planner.lastPlan;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[344px_1fr] lg:gap-8 xl:grid-cols-[360px_1fr]">
-      <section
-        aria-labelledby="trip-heading"
-        className="self-start rounded-md border border-rule bg-card p-4 md:p-5"
-      >
-        <h2 id="trip-heading" className="label-caps">
-          Trip
-        </h2>
-        {collapsed ? (
-          <div className="mt-3 flex flex-col items-start gap-3 md:hidden">
-            <p className="text-lg text-foreground">{tripLine}</p>
-            <p className="font-mono text-base text-ink-2 num">
-              {lastClick?.current_cycle_used_hours ?? 0} h used
-            </p>
-            <p role="status" className="text-base text-ink-2">
-              {planner.isPending ? "Planning route..." : ""}
-            </p>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                editTrip();
-              }}
-            >
-              Edit trip
-            </Button>
-          </div>
-        ) : null}
-        <div className={collapsed ? "mt-4 max-md:hidden" : "mt-4"}>
-          <TripForm
-            api={api}
-            pending={planner.isPending}
-            onSubmit={handleSubmit}
-            submitRef={submitRef}
-            onFocusWithin={() => {
-              prefetchResults();
-            }}
-          />
-        </div>
-      </section>
-
-      <div ref={resultsRef} className="flex min-w-0 flex-col gap-6">
-        <p role="status" className="sr-only">
-          {announcement}
-        </p>
-        {alert && !planner.isPending ? (
-          <PlanAlert
-            failure={alert}
-            failedAtS={planner.failedAtS}
-            showingPrevious={planner.lastPlan !== null}
-            onRetry={() => {
-              if (pendingValues.current) planner.submit(toPlanRequest(pendingValues.current));
-            }}
-            onEdit={editTrip}
-          />
-        ) : null}
-        {showEmpty ? (
-          <EmptyGuidance
-            onFillExample={() => {
-              fillExample();
-              submitRef.current?.focus();
-            }}
-          />
-        ) : null}
-        {!showEmpty ? (
-          <Suspense fallback={<ResultsFallback />}>
-            <ResultsMain
-              plan={plan}
-              loading={planner.isPending}
-              summarySlot={
-                waking ? (
-                  <WakingSummary
-                    startedAtS={planner.submittedAtS ?? 0}
-                    onCancel={() => {
-                      planner.cancel();
-                      setCollapsed(false);
-                    }}
-                  />
-                ) : undefined
-              }
-              stale={stale}
-              selectedStopId={selectedStopId}
-              onSelectStop={setSelectedStopId}
-              onLogFocus={(focus) => {
-                setLogFocus((previous) => ({ ...focus, nonce: (previous?.nonce ?? 0) + 1 }));
+    <>
+      {showEmpty ? null : (
+        <a
+          href="#results"
+          onClick={(event) => {
+            event.preventDefault();
+            resultsRef.current?.focus();
+            resultsRef.current?.scrollIntoView({ block: "start" });
+          }}
+          className="sr-only rounded-sm bg-surface px-3 py-2 text-base font-semibold text-pen focus:not-sr-only focus:absolute focus:start-4 focus:top-2 focus:z-50 focus:ring-2 focus:ring-ring"
+        >
+          Skip to results
+        </a>
+      )}
+      <div className="grid gap-6 lg:grid-cols-[344px_1fr] lg:gap-8 xl:grid-cols-[360px_1fr]">
+        <section
+          aria-labelledby="trip-heading"
+          className="print-hidden self-start rounded-md border border-rule bg-card p-4 md:p-5"
+        >
+          <h2 id="trip-heading" className="label-caps">
+            Trip
+          </h2>
+          {collapsed ? (
+            <div className="mt-3 flex flex-col items-start gap-3 md:hidden">
+              <p className="text-lg text-foreground">{tripLine}</p>
+              <p className="font-mono text-base text-ink-2 num">
+                {lastClick?.current_cycle_used_hours ?? 0} h used
+              </p>
+              <p role="status" className="text-base text-ink-2">
+                {planner.isPending ? "Planning route..." : ""}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  editTrip();
+                }}
+              >
+                Edit trip
+              </Button>
+            </div>
+          ) : null}
+          <div className={collapsed ? "mt-4 max-md:hidden" : "mt-4"}>
+            <TripForm
+              api={api}
+              pending={planner.isPending}
+              onSubmit={handleSubmit}
+              submitRef={submitRef}
+              onFocusWithin={() => {
+                prefetchResults();
               }}
             />
-          </Suspense>
-        ) : null}
-      </div>
+          </div>
+        </section>
 
-      <div className="min-w-0 lg:col-span-2">
-        {showEmpty ? (
-          <LogsSection>
-            <EmptyLogs />
-          </LogsSection>
-        ) : (
-          <Suspense
-            fallback={
-              <LogsSection>
-                <LogSheetSkeleton />
-              </LogsSection>
-            }
-          >
-            <ResultsLogs plan={plan} loading={planner.isPending} focus={logFocus} />
-          </Suspense>
-        )}
+        <section
+          ref={resultsRef}
+          id="results"
+          tabIndex={-1}
+          aria-label="Results"
+          className="print-hidden flex min-w-0 flex-col gap-6 outline-none"
+        >
+          <p role="status" className="sr-only">
+            {announcement}
+          </p>
+          {alert && !planner.isPending ? (
+            <PlanAlert
+              failure={alert}
+              failedAtS={planner.failedAtS}
+              showingPrevious={planner.lastPlan !== null}
+              onRetry={() => {
+                if (pendingValues.current) planner.submit(toPlanRequest(pendingValues.current));
+              }}
+              onEdit={editTrip}
+            />
+          ) : null}
+          {showEmpty ? (
+            <EmptyGuidance
+              onFillExample={() => {
+                fillExample();
+                submitRef.current?.focus();
+              }}
+            />
+          ) : null}
+          {!showEmpty ? (
+            <Suspense fallback={<ResultsFallback />}>
+              <ResultsMain
+                plan={plan}
+                loading={planner.isPending}
+                summarySlot={
+                  waking ? (
+                    <WakingSummary
+                      startedAtS={planner.submittedAtS ?? 0}
+                      onCancel={() => {
+                        planner.cancel();
+                        setCollapsed(false);
+                      }}
+                    />
+                  ) : undefined
+                }
+                stale={stale}
+                selectedStopId={selectedStopId}
+                onSelectStop={setSelectedStopId}
+                onLogFocus={(focus) => {
+                  setLogFocus((previous) => ({ ...focus, nonce: (previous?.nonce ?? 0) + 1 }));
+                }}
+              />
+            </Suspense>
+          ) : null}
+        </section>
+
+        <div className="min-w-0 lg:col-span-2">
+          {showEmpty ? (
+            <LogsSection>
+              <EmptyLogs />
+            </LogsSection>
+          ) : (
+            <Suspense
+              fallback={
+                <LogsSection>
+                  <LogSheetSkeleton />
+                </LogsSection>
+              }
+            >
+              <ResultsLogs plan={plan} loading={planner.isPending} focus={logFocus} />
+            </Suspense>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

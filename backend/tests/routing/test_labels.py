@@ -41,7 +41,7 @@ def test_reuse_within_10_miles():
 
 
 def test_fallback_near_then_coordinates():
-    assert fallback_label((35.0, -97.0), [DALLAS]) == "near Dallas, TX"
+    assert fallback_label((33.5, -96.8), [DALLAS]) == "near Dallas, TX"
     assert fallback_label((35.004, -97.0), []) == "35.00, -97.00"
     assert coordinate_label((35.0, -97.006)) == "35.00, -97.01"
 
@@ -66,3 +66,8 @@ def test_street_label_for_addresses_and_plain_city_otherwise():
 def test_upstream_label_text_is_sanitized():
     props = {"locality": "Dal​las\x00", "region_a": "TX"}
     assert label_from_properties(props) == "Dallas, TX"
+
+
+def test_fallback_far_from_every_known_label_uses_coordinates():
+    assert fallback_label((37.0, -97.0), [DALLAS]) == "37.00, -97.00"  # ~330 miles
+    assert fallback_label((34.5, -96.8), [DALLAS]) == "near Dallas, TX"  # ~130 miles

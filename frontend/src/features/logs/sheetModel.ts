@@ -28,6 +28,24 @@ function field(value: string, maxWidth: number, size: number, minSize?: number):
   return { ...fitMono(value, maxWidth, size, minSize), full: value };
 }
 
+const SHIPPER_WIDTH = 150;
+const SHIPPER_LINES = 3;
+
+/** One line at 13 px when it fits, else wrapped at 11 px so a normal value is never ellipsized. */
+function shipperField(value: string): SheetModel["shipper"] {
+  const single = fitMono(value, SHIPPER_WIDTH, 13, 13);
+  if (!single.clipped)
+    return { lines: value === "" ? [] : [value], size: 13, full: value, clipped: false };
+  const perLine = Math.floor(SHIPPER_WIDTH / (0.6 * 11));
+  const lines = wrapChars(value, perLine, SHIPPER_LINES);
+  return {
+    lines,
+    size: 11,
+    full: value,
+    clipped: lines.join(" ") !== value.trim().replace(/\s+/g, " "),
+  };
+}
+
 /** Greedy word wrap at a fixed character count; anything past `maxLines` is cut with "...". */
 export function wrapChars(text: string, perLine: number, maxLines: number): string[] {
   const lines: string[] = [];
@@ -74,7 +92,8 @@ export interface SheetModel {
   mainOffice: FieldText;
   homeTerminal: FieldText;
   shippingDoc: FieldText;
-  shipper: FieldText;
+  /** Shipper and commodity: wrapped onto up to three lines, the last line sits on the rule. */
+  shipper: { lines: string[]; size: number; full: string; clipped: boolean };
   rowTotals: { off: string; sleeper: string; driving: string; on_duty: string };
   grandTotal: string;
   recap: {
@@ -136,7 +155,7 @@ export function buildSheetModel(
     mainOffice: field(header.main_office_address, 480, 15),
     homeTerminal: field(header.home_terminal_address, 480, 15),
     shippingDoc: field(header.shipping_doc, 150, 13, 11),
-    shipper: field(header.shipper_commodity, 150, 13, 11),
+    shipper: shipperField(header.shipper_commodity),
     rowTotals: {
       off: formatHours(t.off),
       sleeper: formatHours(t.sleeper),

@@ -118,8 +118,17 @@ PLACES_THROTTLES = [
 class ContractThrottleMixin:
     """Replaces DRF's generic Throttled with the contract's per-throttle RATE_LIMITED message."""
 
+    throttled_method = "POST"  # the one method the expensive buckets apply to
+
+    def get_throttles(self) -> list:
+        """Expensive buckets for the endpoint's own method only: OPTIONS or a 405 must not drain them."""
+        request = getattr(self, "request", None)
+        if request is not None and request.method != self.throttled_method:
+            return [DefaultIpThrottle()]
+        return super().get_throttles()  # type: ignore[misc]
+
     def check_throttles(self, request: Request) -> None:
-        for throttle in self.get_throttles():  # type: ignore[attr-defined]
+        for throttle in self.get_throttles():
             if not throttle.allow_request(request, self):
                 message, seconds = throttle.failure_message(throttle.wait())
                 raise ApiError(ErrorCode.RATE_LIMITED, message, retry_after_s=seconds)

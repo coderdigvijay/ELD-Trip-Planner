@@ -389,6 +389,12 @@ def test_reverse_uses_coarse_layers_rounds_and_caches(ors):
     assert params["point.lat"] == "37.54" and params["point.lon"] == "-77.44"
 
 
+def test_reverse_rejects_a_non_us_feature(ors):
+    toronto = feature(-79.38, 43.65, locality="Toronto", region_a="ON", country_a="CAN", country_code="CA")
+    ors.get(f"{BASE}/geocode/reverse").mock(return_value=geocode_ok(toronto))
+    assert ors_client.reverse_label(43.65, -79.38, Deadline()) is None
+
+
 def test_reverse_empty_result_is_negative_cached(ors):
     route = ors.get(f"{BASE}/geocode/reverse").mock(return_value=geocode_ok())
     assert ors_client.reverse_label(40.0, -100.0, Deadline()) is None
@@ -724,3 +730,9 @@ def test_normalized_text_is_what_ors_receives(ors):
     )
     ors_client.geocode_search("  Dallas,\t TX \n", "current", Deadline())
     assert route.calls.last.request.url.params["text"] == "Dallas, TX"
+
+
+def test_deeply_nested_json_is_a_bad_response_not_a_crash(ors):
+    ors.post(HGV_URL).mock(return_value=httpx.Response(200, text="[" * 100_000))
+    with pytest.raises(UpstreamBadResponse):
+        leg()

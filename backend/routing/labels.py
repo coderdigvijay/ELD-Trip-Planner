@@ -11,6 +11,7 @@ from routing.geometry import METERS_PER_MILE, LatLng, haversine_m
 
 REUSE_RADIUS_MILES = 10.0
 ROUND_DP = 2
+NEAR_MAX_MILES = 150.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,9 +90,9 @@ def reuse_known_label(
 
 
 def fallback_label(point: LatLng, known: Iterable[KnownLabel]) -> str:
-    """``near <nearest known label>``, else "lat, lng"."""
+    """``near <nearest known label>`` when it is within NEAR_MAX_MILES, else "lat, lng"."""
     hit = nearest_known(point, known)
-    return f"near {hit[0].label}" if hit else coordinate_label(point)
+    return f"near {hit[0].label}" if hit and hit[1] <= NEAR_MAX_MILES else coordinate_label(point)
 
 
 def round_point(point: LatLng, dp: int = ROUND_DP) -> LatLng:

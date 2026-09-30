@@ -5,6 +5,9 @@ import { afterEach, beforeEach, vi } from "vitest";
 
 import { App } from "./App";
 
+// The lazy map chunk is prefetched on form focus; keep it from loading after the test environment ends.
+vi.mock("@/features/map/MapView", () => ({ default: () => null }));
+
 function testClient(): QueryClient {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }

@@ -144,7 +144,7 @@ def _read_body(response: httpx.Response, deadline: Deadline, cap: int) -> bytes:
 def _error_code(response: httpx.Response, deadline: Deadline) -> int | None:
     try:
         error = json.loads(_read_body(response, deadline, MAX_ERROR_BODY_BYTES)).get("error")
-    except (ValueError, AttributeError, UpstreamBadResponse):
+    except (ValueError, RecursionError, AttributeError, UpstreamBadResponse):
         return None
     code = error.get("code") if isinstance(error, dict) else None
     return code if isinstance(code, int) and not isinstance(code, bool) else None
@@ -158,7 +158,7 @@ def _json_body(response: httpx.Response, deadline: Deadline) -> dict[str, Any]:
     raw = _read_body(response, deadline, MAX_BODY_BYTES)
     try:
         body = json.loads(raw, parse_constant=_reject_constant)
-    except ValueError:
+    except (ValueError, RecursionError):
         raise UpstreamBadResponse from None
     if not isinstance(body, dict):
         raise UpstreamBadResponse
@@ -445,7 +445,7 @@ def reverse_label(lat: float, lng: float, deadline: Deadline) -> str | None:
                 "size": 1,
             },
         )
-        place = next((p for p in (_place_from_feature(f) for f in _features(body)) if p), None)
+        place = next((p for p in (_place_from_feature(f) for f in _features(body)) if p and p.us), None)
         label = place.label if place else None
         cache.set(key, label, REVERSE_TTL.hit_s if label else REVERSE_TTL.not_found_s)
         return label

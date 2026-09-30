@@ -1,0 +1,14 @@
+{
+  "items": [
+    {
+      "label": "Richmond, VA, USA",
+      "lat": 37.54072,
+      "lng": -77.43605
+    },
+    {
+      "label": "Richmond, IN, USA",
+      "lat": 39.82894,
+      "lng": -84.89024
+    }
+  ]
+}

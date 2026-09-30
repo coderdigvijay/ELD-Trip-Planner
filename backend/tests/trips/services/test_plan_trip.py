@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -32,6 +33,7 @@ from tests.trips.services.helpers import (
 )
 from tests.trips.services.invariants import assert_invariants
 from trips.errors import ApiError, ErrorCode
+from trips.services import plan_trip as plan_trip_module
 from trips.services.plan_trip import MAX_REVERSE_CALLS, plan_trip
 
 RICHMOND_PLACE = place("Richmond, VA", RICHMOND)
@@ -264,7 +266,10 @@ def test_start_at_midnight_starts_with_a_shift(ors):
     ("date", "offset"),
     [(dt.date(2026, 10, 30), "-04:00"), (dt.date(2026, 3, 7), "-05:00"), (dt.date(2026, 11, 1), "-05:00")],
 )
-def test_offset_is_frozen_when_the_trip_crosses_a_dst_change(ors, date, offset):
+def test_offset_is_frozen_when_the_trip_crosses_a_dst_change(ors, monkeypatch, date, offset):
+    monkeypatch.setattr(
+        plan_trip_module, "_utc_now", lambda: dt.datetime.combine(date, dt.time(12), tzinfo=dt.UTC)
+    )
     ors.leg(RICHMOND, BALTIMORE, 152.3, 2.62)
     ors.leg(BALTIMORE, DALLAS, 1370.0, 22.0)
     body = plan_trip(
@@ -283,6 +288,20 @@ def test_offset_is_frozen_when_the_trip_crosses_a_dst_change(ors, date, offset):
     assert len(body["days"]) >= 3 and all(sum(d["totals"].values()) == 24 for d in body["days"])
     stamps = [d["date"] for d in body["days"]]
     assert stamps == [(date + dt.timedelta(days=i)).isoformat() for i in range(len(stamps))]
+
+
+@pytest.mark.parametrize("days", [-1, 31])
+def test_start_date_outside_the_home_zone_window_is_a_validation_error(ors, days):
+    today = plan_trip_module._utc_now().astimezone(ZoneInfo("America/New_York")).date()
+    with pytest.raises(ApiError) as caught:
+        short_trip(ors, date=today + dt.timedelta(days=days))
+    assert caught.value.code is ErrorCode.VALIDATION_ERROR and caught.value.field == "start_date"
+
+
+@pytest.mark.parametrize("days", [0, 30])
+def test_start_date_window_edges_are_accepted(ors, days):
+    today = plan_trip_module._utc_now().astimezone(ZoneInfo("America/New_York")).date()
+    assert_invariants(short_trip(ors, date=today + dt.timedelta(days=days)))
 
 
 def test_missing_start_date_means_today_in_the_home_zone(ors):
@@ -353,12 +372,27 @@ def test_total_over_6000_miles_is_trip_too_long(ors):
         plan_trip(request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE))
 
 
-def test_engine_rejection_of_bad_upstream_data_is_internal(ors):
+def test_engine_rejection_of_route_derived_data_is_trip_too_long(ors):
     ors.leg(RICHMOND, BALTIMORE, 500.0, 1.0)  # 500 mph
     ors.leg(BALTIMORE, NEWARK, 185.4, 3.18)
     with pytest.raises(ApiError) as caught:
         plan_trip(request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE))
-    assert caught.value.code is ErrorCode.INTERNAL
+    assert caught.value.code is ErrorCode.TRIP_TOO_LONG
+
+
+def test_tiny_slow_leg_is_clamped_to_the_speed_floor_not_a_500(ors):
+    ors.leg(RICHMOND, BALTIMORE, 0.01, 5 / 60)  # 10 m in 5 s
+    ors.leg(BALTIMORE, NEWARK, 185.4, 3.18)
+    body = plan_trip(request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE))
+    assert_invariants(body)
+
+
+def test_leg_over_the_engine_duration_cap_is_trip_too_long(ors):
+    ors.leg(RICHMOND, BALTIMORE, 152.3, 2.62)
+    ors.leg(BALTIMORE, NEWARK, 1900.0, 400.0)  # 400 h, over 14 days of driving
+    with pytest.raises(ApiError) as caught:
+        plan_trip(request(RICHMOND_PLACE, place("Baltimore, MD", BALTIMORE), NEWARK_PLACE))
+    assert caught.value.code is ErrorCode.TRIP_TOO_LONG and caught.value.http_status == 422
 
 
 def test_engine_bug_is_internal(ors, monkeypatch):

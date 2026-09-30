@@ -115,11 +115,11 @@ class StartDateField(serializers.Field):
         except ValueError:
             self.fail("invalid")
         today = today_utc()
-        if (
-            not today - dt.timedelta(days=START_DATE_DAYS_BACK)
-            <= value
-            <= today + dt.timedelta(days=START_DATE_DAYS_AHEAD)
-        ):
+        # One day of tolerance each way: the caller's zone may be a day off the UTC date. The service
+        # re-checks the exact window against the home-terminal date.
+        earliest = today - dt.timedelta(days=START_DATE_DAYS_BACK + 1)
+        latest = today + dt.timedelta(days=START_DATE_DAYS_AHEAD + 1)
+        if not earliest <= value <= latest:
             self.fail("range")
         return value
 
@@ -148,8 +148,14 @@ class StartTimeField(serializers.Field):
         return value.strftime("%H:%M")
 
 
+# Replaces DRF's "Expected a dictionary, but got str" (leaks Python type names) with contract wording.
+# A comment, not a docstring: docstrings are inherited into the OpenAPI descriptions.
+class ObjectSerializer(serializers.Serializer):
+    default_error_messages = {"invalid": "Send this as an object with the documented fields."}
+
+
 @extend_schema_serializer(component_name="PlaceInput")
-class PlaceInputSerializer(serializers.Serializer):
+class PlaceInputSerializer(ObjectSerializer):
     """A place picked from autocomplete. Unknown keys are ignored (contract section 1)."""
 
     label = CleanTextField(min_length=1, max_length=200)
@@ -186,7 +192,7 @@ class LocationInputField(serializers.Field):
 
 
 @extend_schema_serializer(component_name="LogHeader")
-class LogHeaderSerializer(serializers.Serializer):
+class LogHeaderSerializer(ObjectSerializer):
     """Header text only; never affects HOS. Missing, null or blank all mean "use the default"."""
 
     driver_name = CleanTextField(max_length=80, allow_blank=True, allow_null=True, required=False)
@@ -199,7 +205,7 @@ class LogHeaderSerializer(serializers.Serializer):
     shipper_commodity = CleanTextField(max_length=100, allow_blank=True, allow_null=True, required=False)
 
 
-class PlanTripSerializer(serializers.Serializer):
+class PlanTripSerializer(ObjectSerializer):
     current_location = LocationInputField()
     pickup_location = LocationInputField()
     dropoff_location = LocationInputField()

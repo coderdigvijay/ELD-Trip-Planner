@@ -59,11 +59,12 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "trips.middleware.RequestContextMiddleware",  # first: every later layer and handler sees the id
+    # Second: wraps CORS preflights and DisallowedHost 400s, which inner layers answer directly.
+    "trips.middleware.ResponseHeadersMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "trips.middleware.ResponseHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

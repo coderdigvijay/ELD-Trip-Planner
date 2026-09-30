@@ -216,7 +216,7 @@ export function TripForm({ api, pending, onSubmit, submitRef, onFocusWithin }: T
         }}
         className="group rounded-sm border border-rule bg-surface"
       >
-        <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-base font-semibold text-ink-2 select-none hover:bg-surface-sunk md:min-h-9">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-base font-semibold text-ink-2 select-none hover:bg-surface-sunk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pen md:min-h-9">
           Start time and log details (optional)
         </summary>
         <div className="flex flex-col gap-4 border-t border-rule p-3">

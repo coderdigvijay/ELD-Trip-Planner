@@ -295,7 +295,12 @@ function ReadyLogs({ days, header, sheetCount, timezone, focus }: ReadyProps) {
                 )}
               </div>
             </div>
-            <LogSheetTable day={day} timezone={timezone} forceOpen={problems.length > 0} />
+            <LogSheetTable
+              day={day}
+              header={header}
+              timezone={timezone}
+              forceOpen={problems.length > 0}
+            />
           </LogSheetTabPanel>
         </LogSheetTabs>
       </div>

@@ -126,3 +126,53 @@ def test_flatten_validation_errors_builds_dot_paths():
         {"field": "stops.1.kind", "message": "Bad."},
         {"field": "", "message": "Same place."},
     ]
+
+
+SECURITY_HEADERS = ("Cache-Control", "Content-Security-Policy", "X-Content-Type-Options", "Referrer-Policy")
+
+
+def test_preflight_carries_no_store_and_security_headers(client):
+    response = client.options(
+        "/api/v1/trips/plan",
+        HTTP_ORIGIN="http://localhost:5173",
+        HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+    )
+    reference = client.get("/api/v1/health")
+    assert response["Cache-Control"] == "no-store"
+    for name in SECURITY_HEADERS:
+        assert response[name] == reference[name] or name == "Cache-Control", name
+    assert response["X-Request-ID"]
+
+
+def test_disallowed_host_carries_security_headers():
+    response = Client(raise_request_exception=False).get("/api/v1/health", HTTP_HOST="evil.example")
+    for name in (*SECURITY_HEADERS, "X-Request-ID"):
+        assert response[name], name
+
+
+def test_forced_500_on_autocomplete_logs_no_query_text(client, caplog):
+    from unittest import mock
+
+    caplog.set_level("DEBUG")
+    with mock.patch("trips.views.autocomplete", side_effect=RuntimeError("boom")):
+        response = client.get("/api/v1/places/autocomplete?q=chicagosecret")
+    assert response.status_code == 500
+    assert caplog.records
+    for record in caplog.records:
+        blob = record.getMessage() + " " + " ".join(str(v) for v in vars(record).values())
+        assert "chicagosecret" not in blob, record.name
+
+
+def test_django_request_records_are_stripped_of_request_objects():
+    import logging
+
+    from config.logging import RedactRequestFilter
+
+    record = logging.LogRecord(
+        "django.request", logging.ERROR, "", 0, "Internal Server Error: /x", None, None
+    )
+    record.request = "<WSGIRequest: GET '/x?q=secret'>"
+    assert not RedactRequestFilter().filter(record)  # bare status line: our middleware logs it
+    assert not hasattr(record, "request")
+    record.exc_info = (RuntimeError, RuntimeError("x"), None)
+    assert RedactRequestFilter().filter(record)  # tracebacks are kept

@@ -100,8 +100,8 @@ def test_endpoints_and_operations(spec):
 @pytest.mark.parametrize(
     ("path", "method", "statuses"),
     [
-        ("/api/v1/trips/plan", "post", {"200", "400", "422", "429", "500", "503"}),
-        ("/api/v1/places/autocomplete", "get", {"200", "400", "429", "500", "503"}),
+        ("/api/v1/trips/plan", "post", {"200", "400", "404", "405", "422", "429", "500", "503"}),
+        ("/api/v1/places/autocomplete", "get", {"200", "400", "404", "405", "429", "500", "503"}),
     ],
 )
 def test_every_error_status_is_documented_with_error_response(spec, path, method, statuses):

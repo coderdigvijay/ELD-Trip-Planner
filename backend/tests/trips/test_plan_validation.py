@@ -84,8 +84,8 @@ def test_start_time_default_and_date_default(client, plan_service):
     "value",
     [
         "2026-13-01",
-        (TODAY - dt.timedelta(days=31)).isoformat(),
-        (TODAY + dt.timedelta(days=366)).isoformat(),
+        (TODAY - dt.timedelta(days=32)).isoformat(),
+        (TODAY + dt.timedelta(days=367)).isoformat(),
         "05/10/2026",
         "20261005",
         "2026-10-05T00:00:00",
@@ -378,3 +378,27 @@ def test_size_check_runs_before_throttling(client, plan_service):
     for _ in range(12):
         client.post(PLAN_URL, b"x" * 9000, content_type="application/json")
     assert post_plan(client, valid_payload()).status_code == 200  # oversized bodies never spent the bucket
+
+
+@pytest.mark.parametrize(
+    "value",
+    [(TODAY - dt.timedelta(days=31)).isoformat(), (TODAY + dt.timedelta(days=366)).isoformat()],
+)
+def test_start_date_window_has_one_day_zone_tolerance(client, plan_service, value):
+    assert post_plan(client, valid_payload(start_date=value)).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "value",
+    [(TODAY - dt.timedelta(days=32)).isoformat(), (TODAY + dt.timedelta(days=367)).isoformat()],
+)
+def test_start_date_beyond_tolerance_rejected(client, plan_service, value):
+    _assert_400(post_plan(client, valid_payload(start_date=value)), "start_date")
+
+
+@pytest.mark.parametrize("field", ["log_header", "current_location"])
+def test_wrong_shape_messages_do_not_leak_python_type_names(client, plan_service, field):
+    error = _assert_400(post_plan(client, valid_payload(**{field: "text" if field == "log_header" else 5})))
+    text = json.dumps(error)
+    for leak in ("dictionary", "got str", "got int", "Expected a"):
+        assert leak not in text

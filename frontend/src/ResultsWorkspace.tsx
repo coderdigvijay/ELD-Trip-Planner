@@ -99,7 +99,6 @@ export function ResultsMain({
           state={stopsState(plan, loading)}
           selectedStopId={selectedStopId}
           onSelectStop={select}
-          className="lg:h-120 xl:h-100"
         />
       </div>
     </>

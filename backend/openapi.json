@@ -80,6 +80,26 @@
                         },
                         "description": "VALIDATION_ERROR: q is missing, too short, too long or has control characters."
                     },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "NOT_FOUND: there is no API endpoint at this address."
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "METHOD_NOT_ALLOWED: this endpoint does not accept that HTTP method."
+                    },
                     "429": {
                         "headers": {
                             "Retry-After": {
@@ -177,6 +197,26 @@
                             }
                         },
                         "description": "LOCATION_NOT_FOUND, UNSUPPORTED_LOCATION, ROUTE_NOT_FOUND or TRIP_TOO_LONG: the trip cannot be planned as entered."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "NOT_FOUND: there is no API endpoint at this address."
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "METHOD_NOT_ALLOWED: this endpoint does not accept that HTTP method."
                     },
                     "429": {
                         "headers": {

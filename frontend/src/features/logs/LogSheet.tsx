@@ -126,7 +126,17 @@ function LogSheetImpl({
         <FieldEntry f={model.mainOffice} x={700} y={189} anchor="middle" />
         <FieldEntry f={model.homeTerminal} x={700} y={231} anchor="middle" />
         <FieldEntry f={model.shippingDoc} x={48} y={670} />
-        <FieldEntry f={model.shipper} x={48} y={730} />
+        {model.shipper.lines.map((line, i, all) => (
+          <Entry
+            key={`${i}-${line}`}
+            x={48}
+            y={730 - (all.length - 1 - i) * 12}
+            size={model.shipper.size}
+            title={i === all.length - 1 && model.shipper.clipped ? model.shipper.full : undefined}
+          >
+            {line}
+          </Entry>
+        ))}
 
         <Entry x={954} y={ROW_TOP.off + 29} size={15} anchor="end">
           {model.rowTotals.off}

@@ -227,3 +227,46 @@ def test_guard_context_manager_releases_on_exception(rf):
         raise ValueError("x")
     with PlanInflightGuard(request):
         pass
+
+
+# --- throttles apply to the allowed method only ----------------------------------------------------
+
+
+def test_options_and_wrong_methods_do_not_consume_plan_or_places_buckets(client, plan_service):
+    for i in range(3):
+        for _ in range(10):
+            client.options(PLAN_URL, HTTP_X_FORWARDED_FOR=f"198.51.100.{i}")
+            client.get(PLAN_URL, HTTP_X_FORWARDED_FOR=f"198.51.100.{i}")
+    assert _plan(client, ip="198.51.100.200").status_code == 200
+    assert len(caches["default"].get("throttle_plan_global_min_global")) == 1  # only the POST
+
+
+def test_post_to_autocomplete_does_not_consume_places_bucket(client, autocomplete_service):
+    for _ in range(30):
+        client.post(PLACES_URL, {}, format="json", HTTP_X_FORWARDED_FOR="203.0.113.50")
+    assert not caches["default"].get("throttle_places_global_min_global")
+
+
+def test_other_methods_still_hit_the_default_ip_limit(client):
+    codes = [client.options(PLAN_URL, HTTP_X_FORWARDED_FOR="203.0.113.60").status_code for _ in range(31)]
+    assert codes[-1] == 429
+
+
+# --- in-flight release is owner-checked ------------------------------------------------------------
+
+
+def test_expired_guard_does_not_free_a_newer_owners_slot(rf):
+    from rest_framework.request import Request
+
+    request = Request(rf.post(PLAN_URL, REMOTE_ADDR="203.0.113.70"))
+    cache = caches["default"]
+    first = PlanInflightGuard(request)
+    first.__enter__()
+    cache.clear()  # slots expire while the first request is still running
+    second = PlanInflightGuard(request)
+    second.__enter__()
+    first.__exit__(None, None, None)  # late release by the old owner
+    with pytest.raises(Exception, match="still being planned"):
+        PlanInflightGuard(request).__enter__()
+    second.__exit__(None, None, None)
+    PlanInflightGuard(request).__enter__()  # released properly now

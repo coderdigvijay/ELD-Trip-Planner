@@ -24,6 +24,19 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
+class RedactRequestFilter(logging.Filter):
+    """django.request attaches `request=<WSGIRequest: GET '/path?query'>` (user text) to its records.
+
+    Drop it, and drop the bare status-code duplicates: the request middleware writes the one request
+    line with our request id. Records that carry a traceback are kept (minus the request object).
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        for attr in ("request", "response"):
+            record.__dict__.pop(attr, None)
+        return record.exc_info is not None
+
+
 def _sensitive_httpx_strings(exc: BaseException | None) -> list[str]:
     """Message, URL and query of every httpx error in the exception chain (they embed user text)."""
     found: list[str] = []
@@ -69,7 +82,10 @@ def build_logging_config(level: str) -> dict[str, Any]:
     return {
         "version": 1,
         "disable_existing_loggers": False,
-        "filters": {"request_id": {"()": "config.logging.RequestIdFilter"}},
+        "filters": {
+            "request_id": {"()": "config.logging.RequestIdFilter"},
+            "redact_request": {"()": "config.logging.RedactRequestFilter"},
+        },
         "formatters": {"json": {"()": "config.logging.JsonFormatter"}},
         "handlers": {
             "stdout": {
@@ -85,6 +101,6 @@ def build_logging_config(level: str) -> dict[str, Any]:
             "httpx": {"level": "WARNING"},
             "httpcore": {"level": "WARNING"},
             # Django logs the request path on 4xx; our middleware writes the one request line.
-            "django.request": {"level": "ERROR"},
+            "django.request": {"level": "ERROR", "filters": ["redact_request"]},
         },
     }

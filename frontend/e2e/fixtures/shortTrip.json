@@ -1,0 +1,416 @@
+{
+  "trip": {
+    "places": {
+      "current": {
+        "label": "Richmond, VA",
+        "lat": 37.54072,
+        "lng": -77.43605,
+        "source": "input"
+      },
+      "pickup": {
+        "label": "Baltimore, MD",
+        "lat": 39.29038,
+        "lng": -76.61219,
+        "source": "geocoded"
+      },
+      "dropoff": {
+        "label": "Newark, NJ",
+        "lat": 40.73566,
+        "lng": -74.17237,
+        "source": "input"
+      }
+    },
+    "timezone": {
+      "name": "America/New_York",
+      "abbreviation": "EDT",
+      "utc_offset": "-04:00",
+      "utc_offset_min": -240
+    },
+    "start_at": "2026-10-05T08:00:00-04:00",
+    "cycle_used_start_h": 10,
+    "log_header": {
+      "driver_name": "John Doe",
+      "carrier_name": "John Doe's Transportation",
+      "main_office_address": "Washington, D.C.",
+      "home_terminal_address": "Washington, D.C.",
+      "truck_number": "123",
+      "trailer_number": "20544",
+      "shipping_doc": "101601",
+      "shipper_commodity": "ACME Foods, dry groceries"
+    },
+    "assumptions": [
+      {
+        "id": "A1",
+        "text": "You are off duty from midnight until the trip starts, with fresh 11- and 14-hour clocks."
+      },
+      {
+        "id": "A3",
+        "text": "All times use the home terminal's time (Richmond, VA, UTC-04:00) for the whole trip."
+      },
+      {
+        "id": "A4",
+        "text": "Each shift starts with a 30-minute pre-trip inspection (on duty)."
+      },
+      {
+        "id": "A6",
+        "text": "Pickup and dropoff each take 1 hour on duty."
+      },
+      {
+        "id": "A7",
+        "text": "Fueling takes 30 minutes on duty, at least every 1,000 miles. The truck starts full."
+      },
+      {
+        "id": "A9",
+        "text": "Each 10-hour rest is logged as Sleeper Berth."
+      },
+      {
+        "id": "A11",
+        "text": "None of your previous cycle hours expire during the trip (conservative)."
+      },
+      {
+        "id": "A17",
+        "text": "If a due 30-minute break would leave less than 15 minutes of driving in the 14-hour window, the plan takes the 10-hour rest instead."
+      }
+    ],
+    "warnings": []
+  },
+  "route": {
+    "profile": "driving-hgv",
+    "distance_mi": 337.7,
+    "planned_driving_h": 6,
+    "bounds": {
+      "south": 37.54072,
+      "west": -77.43605,
+      "north": 40.73566,
+      "east": -74.17237
+    },
+    "legs": [
+      {
+        "index": 0,
+        "from_label": "Richmond, VA",
+        "to_label": "Baltimore, MD",
+        "distance_mi": 152.3,
+        "duration_h": 2.62,
+        "planned_driving_h": 2.75,
+        "polyline": "odcdFhfswMoyfDis`A{{lDyg~A",
+        "bounds": {
+          "south": 37.54072,
+          "west": -77.43605,
+          "north": 39.29038,
+          "east": -76.61219
+        }
+      },
+      {
+        "index": 1,
+        "from_label": "Baltimore, MD",
+        "to_label": "Newark, NJ",
+        "distance_mi": 185.4,
+        "duration_h": 3.18,
+        "planned_driving_h": 3.25,
+        "polyline": "{{xnFdirrMcavBewkF{ebDuwnF",
+        "bounds": {
+          "south": 39.29038,
+          "west": -76.61219,
+          "north": 40.73566,
+          "east": -74.17237
+        }
+      }
+    ]
+  },
+  "stops": [
+    {
+      "id": "s1",
+      "kind": "start",
+      "lat": 37.54072,
+      "lng": -77.43605,
+      "label": "Richmond, VA",
+      "label_source": "input",
+      "arrive_at": "2026-10-05T08:00:00-04:00",
+      "depart_at": "2026-10-05T08:30:00-04:00",
+      "duration_h": 0.5,
+      "duty_status": "on_duty",
+      "cumulative_mi": 0,
+      "leg_index": 0,
+      "note": "Pre-trip inspection",
+      "reason": ""
+    },
+    {
+      "id": "s2",
+      "kind": "pickup",
+      "lat": 39.29038,
+      "lng": -76.61219,
+      "label": "Baltimore, MD",
+      "label_source": "geocoded",
+      "arrive_at": "2026-10-05T11:15:00-04:00",
+      "depart_at": "2026-10-05T12:15:00-04:00",
+      "duration_h": 1,
+      "duty_status": "on_duty",
+      "cumulative_mi": 152.3,
+      "leg_index": 0,
+      "note": "Pickup",
+      "reason": "Pickup (1 hr on duty)"
+    },
+    {
+      "id": "s3",
+      "kind": "dropoff",
+      "lat": 40.73566,
+      "lng": -74.17237,
+      "label": "Newark, NJ",
+      "label_source": "input",
+      "arrive_at": "2026-10-05T15:30:00-04:00",
+      "depart_at": "2026-10-05T16:30:00-04:00",
+      "duration_h": 1,
+      "duty_status": "on_duty",
+      "cumulative_mi": 337.7,
+      "leg_index": 1,
+      "note": "Dropoff",
+      "reason": "Dropoff (1 hr on duty)"
+    },
+    {
+      "id": "s4",
+      "kind": "end",
+      "lat": 40.73566,
+      "lng": -74.17237,
+      "label": "Newark, NJ",
+      "label_source": "input",
+      "arrive_at": "2026-10-05T16:30:00-04:00",
+      "depart_at": "2026-10-05T16:30:00-04:00",
+      "duration_h": 0,
+      "duty_status": "off",
+      "cumulative_mi": 337.7,
+      "leg_index": 1,
+      "note": "Released from duty",
+      "reason": "Trip complete"
+    }
+  ],
+  "timeline": [
+    {
+      "start_min": 0,
+      "end_min": 480,
+      "start_at": "2026-10-05T00:00:00-04:00",
+      "end_at": "2026-10-05T08:00:00-04:00",
+      "status": "off",
+      "stop_id": null,
+      "start_label": "Richmond, VA",
+      "end_label": "Richmond, VA",
+      "start_mi": 0,
+      "end_mi": 0,
+      "note": "Off duty"
+    },
+    {
+      "start_min": 480,
+      "end_min": 510,
+      "start_at": "2026-10-05T08:00:00-04:00",
+      "end_at": "2026-10-05T08:30:00-04:00",
+      "status": "on_duty",
+      "stop_id": "s1",
+      "start_label": "Richmond, VA",
+      "end_label": "Richmond, VA",
+      "start_mi": 0,
+      "end_mi": 0,
+      "note": "Pre-trip inspection"
+    },
+    {
+      "start_min": 510,
+      "end_min": 675,
+      "start_at": "2026-10-05T08:30:00-04:00",
+      "end_at": "2026-10-05T11:15:00-04:00",
+      "status": "driving",
+      "stop_id": null,
+      "start_label": "Richmond, VA",
+      "end_label": "Baltimore, MD",
+      "start_mi": 0,
+      "end_mi": 152.3,
+      "note": "Driving"
+    },
+    {
+      "start_min": 675,
+      "end_min": 735,
+      "start_at": "2026-10-05T11:15:00-04:00",
+      "end_at": "2026-10-05T12:15:00-04:00",
+      "status": "on_duty",
+      "stop_id": "s2",
+      "start_label": "Baltimore, MD",
+      "end_label": "Baltimore, MD",
+      "start_mi": 152.3,
+      "end_mi": 152.3,
+      "note": "Pickup"
+    },
+    {
+      "start_min": 735,
+      "end_min": 930,
+      "start_at": "2026-10-05T12:15:00-04:00",
+      "end_at": "2026-10-05T15:30:00-04:00",
+      "status": "driving",
+      "stop_id": null,
+      "start_label": "Baltimore, MD",
+      "end_label": "Newark, NJ",
+      "start_mi": 152.3,
+      "end_mi": 337.7,
+      "note": "Driving"
+    },
+    {
+      "start_min": 930,
+      "end_min": 990,
+      "start_at": "2026-10-05T15:30:00-04:00",
+      "end_at": "2026-10-05T16:30:00-04:00",
+      "status": "on_duty",
+      "stop_id": "s3",
+      "start_label": "Newark, NJ",
+      "end_label": "Newark, NJ",
+      "start_mi": 337.7,
+      "end_mi": 337.7,
+      "note": "Dropoff"
+    },
+    {
+      "start_min": 990,
+      "end_min": 1440,
+      "start_at": "2026-10-05T16:30:00-04:00",
+      "end_at": "2026-10-06T00:00:00-04:00",
+      "status": "off",
+      "stop_id": null,
+      "start_label": "Newark, NJ",
+      "end_label": "Newark, NJ",
+      "start_mi": 337.7,
+      "end_mi": 337.7,
+      "note": "Off duty"
+    }
+  ],
+  "days": [
+    {
+      "date": "2026-10-05",
+      "sheet_index": 1,
+      "from_label": "Richmond, VA",
+      "to_label": "Newark, NJ",
+      "miles_driven": 337.7,
+      "segments": [
+        {
+          "start_min": 0,
+          "end_min": 480,
+          "status": "off",
+          "location_label": "Richmond, VA",
+          "note": "Off duty",
+          "stationary": false,
+          "stop_id": null
+        },
+        {
+          "start_min": 480,
+          "end_min": 510,
+          "status": "on_duty",
+          "location_label": "Richmond, VA",
+          "note": "Pre-trip inspection",
+          "stationary": true,
+          "stop_id": "s1"
+        },
+        {
+          "start_min": 510,
+          "end_min": 675,
+          "status": "driving",
+          "location_label": "Baltimore, MD",
+          "note": "Driving",
+          "stationary": false,
+          "stop_id": null
+        },
+        {
+          "start_min": 675,
+          "end_min": 735,
+          "status": "on_duty",
+          "location_label": "Baltimore, MD",
+          "note": "Pickup",
+          "stationary": true,
+          "stop_id": "s2"
+        },
+        {
+          "start_min": 735,
+          "end_min": 930,
+          "status": "driving",
+          "location_label": "Newark, NJ",
+          "note": "Driving",
+          "stationary": false,
+          "stop_id": null
+        },
+        {
+          "start_min": 930,
+          "end_min": 990,
+          "status": "on_duty",
+          "location_label": "Newark, NJ",
+          "note": "Dropoff",
+          "stationary": true,
+          "stop_id": "s3"
+        },
+        {
+          "start_min": 990,
+          "end_min": 1440,
+          "status": "off",
+          "location_label": "Newark, NJ",
+          "note": "Off duty",
+          "stationary": false,
+          "stop_id": null
+        }
+      ],
+      "remarks": [
+        {
+          "minute": 480,
+          "location_label": "Richmond, VA",
+          "note": "Pre-trip inspection"
+        },
+        {
+          "minute": 510,
+          "location_label": "Richmond, VA",
+          "note": "Driving"
+        },
+        {
+          "minute": 675,
+          "location_label": "Baltimore, MD",
+          "note": "Pickup"
+        },
+        {
+          "minute": 735,
+          "location_label": "Baltimore, MD",
+          "note": "Driving"
+        },
+        {
+          "minute": 930,
+          "location_label": "Newark, NJ",
+          "note": "Dropoff"
+        },
+        {
+          "minute": 990,
+          "location_label": "Newark, NJ",
+          "note": "Off duty"
+        }
+      ],
+      "totals": {
+        "off": 15.5,
+        "sleeper": 0,
+        "driving": 6,
+        "on_duty": 2.5
+      },
+      "recap": {
+        "on_duty_today": 8.5,
+        "a_last7": 18.5,
+        "b_available_tomorrow": 51.5,
+        "c_last8": 18.5,
+        "restart_note": null
+      }
+    }
+  ],
+  "summary": {
+    "total_distance_mi": 337.7,
+    "driving_h": 6,
+    "on_duty_not_driving_h": 2.5,
+    "on_duty_total_h": 8.5,
+    "trip_duration_h": 8.5,
+    "arrival_at": "2026-10-05T15:30:00-04:00",
+    "released_at": "2026-10-05T16:30:00-04:00",
+    "sheet_count": 1,
+    "cycle_used_start_h": 10,
+    "cycle_used_end_h": 18.5,
+    "counts": {
+      "fuel": 0,
+      "break": 0,
+      "rest": 0,
+      "restart": 0
+    }
+  }
+}

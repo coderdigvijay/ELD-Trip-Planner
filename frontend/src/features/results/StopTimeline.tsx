@@ -26,7 +26,7 @@ import type {
  *   optional onSelectDay(sheetIndex), optional hoveredStopId / onHoverStop.
  *   Click or Enter on a row selects it; Escape clears; the selected row scrolls into view inside
  *   this panel only (the page never scrolls).
- * - className: the App sets the panel height at lg+ (for example `lg:h-90`); the list scrolls inside it.
+ * - className: extra classes for the card. The card grows to its content, so no row is ever clipped.
  */
 export type StopTimelineState = PanelState<{
   stops: readonly Stop[];
@@ -129,7 +129,7 @@ function ReadyTimeline({
       {noExtraStops ? (
         <p className="mt-2 text-base text-ink-2">No stops needed. The trip fits in one shift.</p>
       ) : null}
-      <div ref={scrollerRef} className="relative mt-3 min-h-0 flex-1 lg:overflow-y-auto">
+      <div ref={scrollerRef} className="relative mt-3 flex-1">
         {groups.map((group) => (
           <div key={group.key} className="mb-4 last:mb-0">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-rule pb-1">

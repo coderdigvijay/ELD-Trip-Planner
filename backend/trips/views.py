@@ -49,6 +49,8 @@ def _error(status_description: str) -> OpenApiResponse:
 
 
 _COMMON_ERRORS = {
+    404: _error("NOT_FOUND: there is no API endpoint at this address."),
+    405: _error("METHOD_NOT_ALLOWED: this endpoint does not accept that HTTP method."),
     429: _error("Rate limited. Read retry_after_s or the Retry-After header."),
     500: _error("Unexpected error. Quote request_id."),
 }
@@ -138,6 +140,7 @@ class PlanTripView(ContractThrottleMixin, APIView):
 class AutocompleteView(ContractThrottleMixin, APIView):
     """GET /api/v1/places/autocomplete?q=."""
 
+    throttled_method = "GET"
     throttle_classes = PLACES_THROTTLES
     authentication_classes: list = []
     permission_classes: list = []

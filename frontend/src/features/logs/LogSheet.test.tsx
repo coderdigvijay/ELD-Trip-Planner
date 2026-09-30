@@ -236,6 +236,16 @@ describe("long values (test 24)", () => {
     }
   });
 
+  it("wraps a normal shipper and commodity onto two lines without an ellipsis", () => {
+    const { container } = render(
+      <LogSheet day={shortTripDay} header={shortTripHeader} sheetCount={1} />,
+    );
+    const entries = texts(container, '[data-part="entries"] text');
+    expect(entries).toContain("ACME Foods, dry");
+    expect(entries).toContain("groceries");
+    expect(entries.join(" ")).not.toContain("...");
+  });
+
   it("truncates a long remark place and keeps the full text on hover", () => {
     const place = "Extraordinarily Long Place Name, XX";
     const day: LogDay = {
