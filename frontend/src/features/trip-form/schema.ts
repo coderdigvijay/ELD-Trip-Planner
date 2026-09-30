@@ -216,16 +216,22 @@ export function isTripFieldName(name: string): name is TripFieldName {
   return TRIP_FIELD_NAMES.some((known) => known === name);
 }
 
+/**
+ * Log details start pre-filled with the FMCSA guide's completed sample log (p. 19: John Doe's
+ * Transportation, Washington D.C., vehicles 123 and 20544, shipping no. 101601), so a sheet is
+ * "filled out" even when the user types only the four trip inputs. Every value is visible and
+ * editable in the "Start time and log details" section; clearing a field leaves that line blank.
+ */
 export function defaultLogHeader(): TripFormValues["log_header"] {
   return {
-    driver_name: "",
-    carrier_name: "",
-    main_office_address: "",
-    home_terminal_address: "",
-    truck_number: "",
-    trailer_number: "",
-    shipping_doc: "",
-    shipper_commodity: "",
+    driver_name: "John E. Doe",
+    carrier_name: "John Doe's Transportation",
+    main_office_address: "Washington, D.C.",
+    home_terminal_address: "Washington, D.C.",
+    truck_number: "123",
+    trailer_number: "20544",
+    shipping_doc: "101601",
+    shipper_commodity: "ACME Foods, dry groceries",
   };
 }
 

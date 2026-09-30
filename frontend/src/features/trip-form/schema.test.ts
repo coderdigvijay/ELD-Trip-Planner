@@ -126,12 +126,25 @@ describe("optional details", () => {
 
 describe("toPlanRequest", () => {
   it("omits blank optionals and sends picked places with coordinates", () => {
-    const body = toPlanRequest(valid({ ...EXAMPLE_TRIP }));
+    const blank = { ...defaultTripValues().log_header };
+    for (const key of Object.keys(blank) as (keyof typeof blank)[]) blank[key] = "";
+    const body = toPlanRequest(valid({ ...EXAMPLE_TRIP, log_header: blank }));
     expect(body).toEqual({
       current_location: EXAMPLE_TRIP.current_location,
       pickup_location: EXAMPLE_TRIP.pickup_location,
       dropoff_location: EXAMPLE_TRIP.dropoff_location,
       current_cycle_used_hours: 23.5,
+    });
+  });
+
+  it("sends the pre-filled FMCSA sample log details by default", () => {
+    const body = toPlanRequest(valid({ ...EXAMPLE_TRIP }));
+    expect(body.log_header).toMatchObject({
+      carrier_name: "John Doe's Transportation",
+      main_office_address: "Washington, D.C.",
+      truck_number: "123",
+      trailer_number: "20544",
+      shipping_doc: "101601",
     });
   });
 
