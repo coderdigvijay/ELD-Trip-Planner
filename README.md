@@ -13,15 +13,15 @@ filled daily log sheet per calendar day of the trip.
 
 ## Live demo
 
-Deployment is pending. These placeholders will be replaced when the URLs exist.
+Both parts are deployed on free tiers.
 
 | What | URL |
 |---|---|
-| App (Vercel) | `<vercel-url>` |
+| App (Vercel) | https://eld-trip-planner-liart.vercel.app |
 | API (Render) | https://eld-trip-planner-api-i6y3.onrender.com |
 | API health check | https://eld-trip-planner-api-i6y3.onrender.com/api/v1/health |
 | API docs (Swagger) | https://eld-trip-planner-api-i6y3.onrender.com/api/v1/docs |
-| Loom walkthrough | `<loom-url>` |
+| Loom walkthrough | https://www.loom.com/share/1f3bee9bf6ba4dfdb3e4fdaa840af825 |
 
 The API runs on Render's free tier and sleeps when idle. The first request after a sleep can take
 30 to 60 seconds. The UI shows a "waking the server" state, and a keep-warm ping is set up (see
@@ -208,9 +208,9 @@ frontend build with a bundle-size check.
 |---|---|---|
 | API | Render free web service from `render.yaml` (`rootDir: backend`) | Secrets are set in the dashboard, not in the repo. Health check path `/api/v1/health` |
 | SPA | Vercel from `frontend/` | `vercel.json` sets a strict CSP and security headers. The browser calls the API directly over CORS |
-| Keep-warm | UptimeRobot pings `/api/v1/health` every 5 min, plus a warm-up ping when the SPA loads | Health never calls ORS, so pings cost no quota |
+| Keep-warm | A warm-up ping when the SPA loads; an UptimeRobot monitor on `/api/v1/health` every 5 min is recommended | Health never calls ORS, so pings cost no quota |
 
-Deployment is pending, so live URLs are placeholders above.
+Both parts are live: see the Live demo table above for the URLs.
 
 ## Security notes
 
@@ -249,4 +249,4 @@ eld-trip-planner/
 
 ## Walkthrough
 
-Loom video: `<loom-url>` (placeholder until recorded).
+Loom video: https://www.loom.com/share/1f3bee9bf6ba4dfdb3e4fdaa840af825
